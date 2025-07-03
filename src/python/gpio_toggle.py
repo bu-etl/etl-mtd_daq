@@ -1,6 +1,6 @@
 from tamalero.utils import get_kcu
 from time import sleep
-
+# test
 def wr_adr(kcu, adr, data):
     kcu.toggle_dispatch()
     #kcu.write_node("READOUT_BOARD_%d.SC.TX_GBTX_ADDR" % rb, 115)
