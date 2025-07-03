@@ -9,6 +9,7 @@
 #include <uhal/ConnectionManager.hpp>
 #include <uhal/HwInterface.hpp>
 #include "emp/SCCICNode.hpp"
+#include "emp/exception.hpp"
 
 // lpgbt regs
 #define PIO_DIR_HI    0x053
@@ -31,7 +32,9 @@ void toggleTest(emp::SCCICNode& ic,
   uint8_t  bit    = 1 << (gpio % 8);
 
   // set as output
+  std::cout << "set as output" << "\n";
   ic.icWrite(dirReg, bit, addr);
+  std::cout << "set as output done" << "\n";
 
   uint8_t value = 0;
   for (int i = 0; i < times; ++i) {
@@ -45,17 +48,27 @@ void tamaleroSetUp(emp::SCCICNode& ic,
                    unsigned addr,
                    bool invert)
 {
-  ic.icWrite(ULDATASOURCE0, 0xC0, addr);
-  usleep(10000);
-  ic.icWrite(ULDATASOURCE0, 0x00, addr);
+  try{
+    std::cout << "toggle uplink" << "\n";
+    ic.icWrite(ULDATASOURCE0, 0xC0, addr);
+    usleep(1000);
+    ic.icWrite(ULDATASOURCE0, 0x00, addr);
+    std::cout << "toggle uplink done" << "\n";
 
-  if (invert) ic.icWrite(CHIPCONFIG, 0x80, addr);
+    std::cout << "invert" << "\n";
+    if (invert) ic.icWrite(CHIPCONFIG, 0x80, addr);
+    std::cout << "invert done" << "\n";
 
-  ic.icWrite(POWERUP2, 0x06, addr);
-  usleep(10000);
+    std::cout << "powerup" << "\n";
+    ic.icWrite(POWERUP2, 0x06, addr);
+    usleep(1000);
+    std::cout << "powerup done" << "\n";
 
-  uint8_t romval = ic.icRead(ROM, addr);
-  printf("ROM register value: 0x%02X\n", romval);
+    uint8_t romval = ic.icRead(ROM, addr);
+    printf("ROM register value: 0x%02X\n", romval);
+  } catch (const emp::ICTimeOut&) {
+    std::cout << "caught something" << "\n";
+  }
 }
 
 int main(int argc, char* argv[])
@@ -87,8 +100,33 @@ int main(int argc, char* argv[])
 
   // Initialize uHAL
   uhal::ConnectionManager cm("file://" + connFile);
-  uhal::HwInterface        hw = cm.getDevice("x0");
-  emp::SCCICNode           ic( hw.getNode("SCCIC") );
+  uhal::HwInterface hw = cm.getDevice("x0");
+
+  // --------------------------------------------
+  // debug: print all node IDs
+  // for ( auto& nodeName : hw.getNodes() ) {
+  //   std::cout << "  • " << nodeName << "\n";
+  // }
+  // --------------------------------------------
+
+  emp::SCCICNode ic( hw.getNode("datapath.region.fe_mgt.data_framer.scc.ic.auto") );
+  ic.reset();                
+  usleep(10000);
+
+  // --------------------------------------------
+  // debug: try to read rom reg 
+  // for (uint8_t a = 0x60; a <= 0x77; ++a)
+  // {
+  //   try {
+  //     ic.icRead(ROM, a);           // ROM = 0x1D7
+  //     std::cout << "lpGBT present at 0x"
+  //               << std::hex << int(a) << "\n";
+  //   } catch (const emp::ICTimeOut&) {
+  //     std::cout << "lpGBT not present at 0x"
+  //               << std::hex << int(a) << "\n";
+  //   }
+  // }
+  // --------------------------------------------
 
   if (sflag) {
     unsigned addr; int invert;
