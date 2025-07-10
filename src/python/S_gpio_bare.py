@@ -1,3 +1,9 @@
+'''
+Info: When connecting Frontend Electronics to Serenity trying to use most direct Cpp Layer
+funcstions to control a GPIO pin on the lpGBT
+'''
+
+
 import time
 import sys
 from lpgbt_control_lib import LpgbtV1

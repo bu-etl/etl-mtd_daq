@@ -1,3 +1,9 @@
+'''
+Info: When connecting Frontend Electronics to Serenity trying to use MTD software
+to control a GPIO pin on the lpGBT
+'''
+
+
 import time
 import sys
 from ..controllers.lpgbt_controller import *

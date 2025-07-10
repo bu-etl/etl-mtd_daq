@@ -1,3 +1,8 @@
+/*
+Info: When connecting Frontend Electronics to Serenity, this script tests if we can control a gpio pin 
+and run test tamalero setup using SCCIC + IPbus / uHAL
+*/
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstdint>

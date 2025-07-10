@@ -1,3 +1,8 @@
+'''
+Info: When connecting Frontend Electronics to KCU105 trying to use IPBUS 
+'''
+
+
 from tamalero.utils import get_kcu
 from time import sleep
 # test
