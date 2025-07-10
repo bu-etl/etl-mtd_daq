@@ -1,4 +1,6 @@
 /*
+Author: Naomi Gonzalez
+
 Info: When connecting Frontend Electronics to Serenity, this script tests if we can control a gpio pin 
 and run test tamalero setup using SCCIC + IPbus / uHAL
 */
@@ -37,42 +39,60 @@ void toggleTest(emp::SCCICNode& ic,
   uint8_t  bit    = 1 << (gpio % 8);
 
   // set as output
-  std::cout << "set as output" << "\n";
-  ic.icWrite(dirReg, bit, addr);
-  std::cout << "set as output done" << "\n";
+  std::cout << "set as output" << std::endl;
+  try{
+    ic.icWrite(dirReg, bit, addr);
+  } catch (const emp::ICTimeOut&) {
+    std::cout << "ERROR: Setting dir - Timeout" << std::endl;
+  }
+  
+  std::cout << "Set as output done" << std::endl;
 
   uint8_t value = 0;
   for (int i = 0; i < times; ++i) {
     value ^= 1;
-    ic.icWrite(outReg, value, addr);
+    try{
+      ic.icWrite(outReg, value, addr);
+    } catch (const emp::ICTimeOut&) {
+      std::cout << "ERROR: Setting output - Timeout" << std::endl;
+    }
     sleep(delay_s);
   }
+  std::cout << "Toggle Test Done" << std::endl;
 }
 
 void tamaleroSetUp(emp::SCCICNode& ic,
                    unsigned addr,
                    bool invert)
 {
-  try{
-    std::cout << "toggle uplink" << "\n";
-    ic.icWrite(ULDATASOURCE0, 0xC0, addr);
-    usleep(1000);
-    ic.icWrite(ULDATASOURCE0, 0x00, addr);
-    std::cout << "toggle uplink done" << "\n";
 
+  std::cout << "toggle uplink" << "\n";
+  try{ ic.icWrite(ULDATASOURCE0, 0xC0, addr); } 
+  catch (const emp::ICTimeOut&) { continue; }
+  usleep(1000);
+  try{ ic.icWrite(ULDATASOURCE0, 0x00, addr); }
+  catch (const emp::ICTimeOut&) { continue; }
+  std::cout << "toggle uplink done" << "\n";
+
+  if (invert){
     std::cout << "invert" << "\n";
-    if (invert) ic.icWrite(CHIPCONFIG, 0x80, addr);
+    try { ic.icWrite(CHIPCONFIG, 0x80, addr); }
+    catch (const emp::ICTimeOut&) { continue; }
     std::cout << "invert done" << "\n";
+  }
 
-    std::cout << "powerup" << "\n";
-    ic.icWrite(POWERUP2, 0x06, addr);
-    usleep(1000);
-    std::cout << "powerup done" << "\n";
+  std::cout << "powerup" << "\n";
+  try { ic.icWrite(POWERUP2, 0x06, addr); }
+  catch (const emp::ICTimeOut&) { continue; }
+  usleep(1000);
+  std::cout << "powerup done" << "\n";
 
+  try { 
     uint8_t romval = ic.icRead(ROM, addr);
     printf("ROM register value: 0x%02X\n", romval);
-  } catch (const emp::ICTimeOut&) {
-    std::cout << "caught something" << "\n";
+  }
+  catch (const emp::ICTimeOut&){ 
+    std::cout << "ERROR: Read ROM - Timeout" << std::endl; 
   }
 }
 
