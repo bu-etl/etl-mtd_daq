@@ -1,3 +1,8 @@
+'''
+Info: When connecting Frontend Electronics to Serenity trying to use Tamalero configuration 
+steps to try to then attempt the first read of the lpGBT
+'''
+
 import time
 import sys
 from ..controllers.lpgbt_controller import *
