@@ -14,10 +14,10 @@ lpgbt = lpgbt_chip(
     "Master LPGBT", 
     connection="~/mtd-emp-toolbox/mtd-daq/lpGBTv2_3_SO1_ceacmsfw_250603_1554_ETL/hls_connections.xml")
 lpgbt.lpgbt_cont_.set_multiwrite(False)
-# try:
-#     lpgbt.init_lpgbt()
-# except Exception as e:
-#     print(f"Failed at lpgbt power up first read try: {e}")
+try:
+    lpgbt.init_lpgbt()
+except Exception as e:
+    print(f"Failed at lpgbt power up first read try: {e}")
 time.sleep(1)
 lpgbt.write_reg(0x03b, 0)
 lpgbt.write_reg(0x0f1, 0x50)
@@ -52,11 +52,24 @@ for i in range(50):
         # should have this method because it inherits from LpgbtV1 which inherits from Lpgbt
 
         print("attempting to read!!")
-        v1 = lpgbt.read_reg(0x1d7)
+
+        do_break = False
+        for link in [0,1,2,3,4,5,6,7,8,9,10,11]:
+            try:
+                lpgbt.lpgbt_cont_.lpgbt_com.emp_cont.getDatapath().selectLink(link)
+                time.sleep(0.1)
+                v1 = lpgbt.read_reg(0x1d7)
+                do_break = True
+            except Exception as e:
+                print(f"Link {link} failed with error: {e}")
+
+        if do_break:
+            break
+
         # print("0x{0:x}".format(
         #     lpgbt.lpgbt_cont_.read_lpgbt_regs(int("0x1d9", 0), 1)[0])
         # )
-        break
+
         # print("v1 is", v1)
         # if v1 == 0xa6:
         #     break
