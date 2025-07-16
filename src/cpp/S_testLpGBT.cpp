@@ -45,7 +45,7 @@ void toggleTest(emp::SCCICNode& ic,
   } catch (const emp::ICTimeOut&) {
     std::cout << "ERROR: Setting dir - Timeout" << std::endl;
   }
-  
+  sleep(1);
   std::cout << "Set as output done" << std::endl;
 
   uint8_t value = 0;
@@ -56,6 +56,7 @@ void toggleTest(emp::SCCICNode& ic,
     } catch (const emp::ICTimeOut&) {
       std::cout << "ERROR: Setting output - Timeout" << std::endl;
     }
+    std::cout << "Sleep" << std::endl;
     sleep(delay_s);
   }
   std::cout << "Toggle Test Done" << std::endl;
@@ -68,28 +69,29 @@ void tamaleroSetUp(emp::SCCICNode& ic,
 
   std::cout << "toggle uplink" << "\n";
   try{ ic.icWrite(ULDATASOURCE0, 0xC0, addr); } 
-  catch (const emp::ICTimeOut&) { continue; }
+  catch (const emp::ICTimeOut&) {  }
   usleep(1000);
   try{ ic.icWrite(ULDATASOURCE0, 0x00, addr); }
-  catch (const emp::ICTimeOut&) { continue; }
+  catch (const emp::ICTimeOut&) {  }
   std::cout << "toggle uplink done" << "\n";
 
   if (invert){
     std::cout << "invert" << "\n";
     try { ic.icWrite(CHIPCONFIG, 0x80, addr); }
-    catch (const emp::ICTimeOut&) { continue; }
+    catch (const emp::ICTimeOut&) {  }
     std::cout << "invert done" << "\n";
   }
 
   std::cout << "powerup" << "\n";
   try { ic.icWrite(POWERUP2, 0x06, addr); }
-  catch (const emp::ICTimeOut&) { continue; }
+  catch (const emp::ICTimeOut&) {  }
   usleep(1000);
   std::cout << "powerup done" << "\n";
 
   try { 
     uint8_t romval = ic.icRead(ROM, addr);
     printf("ROM register value: 0x%02X\n", romval);
+    return 0;
   }
   catch (const emp::ICTimeOut&){ 
     std::cout << "ERROR: Read ROM - Timeout" << std::endl; 
