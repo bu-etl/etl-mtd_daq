@@ -64,6 +64,9 @@ import time
 import sys
 from ..controllers.lpgbt_controller import *
 import logging
+from functools import partial
+from ..controllers.mux64_controller import mux64_chip
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("lpgbt")
 
@@ -73,45 +76,47 @@ lpgbt = lpgbt_chip(
     link=4,
     lpgbt_address="0x73"
 )
-
 lpgbt.lpgbt_cont_.set_multiwrite(False)
 lpgbt.init_lpgbt()
 
-from ..controllers.mux64_controller import mux64_chip
-
 mux64 = mux64_chip(lpgbt, board="Readout Board") 
-#mux64.write_config()
+mux64.write_config()
 
+master_id = 2
+slave_address = 0x70
 
-#before = lpgbt.i2c_master_read(
-#  master_id = 0, # either 0, 1, 2, check what tamalero uses
-#  slave_address = 0x60, # for slave lpgbt
-#  read_len = 1,
-#  reg_address_width = 1,
-#  reg_address = 0x1d7
-#)
-#print(before)
-
-lpgbt.i2c_master_reset(0)
-import time
-time.sleep(3)
-lpgbt.i2c_master_reset(0)
-# Run Powerup
-reg_address = 0xfb # https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html?highlight=powerup2#x0fb-powerup2
-lpgbt.i2c_master_write(
-  master_id = 0, # either 0, 1, 2, check what tamalero uses
-  slave_address = 0x60, # for slave lpgbt
-  reg_address_width = 1, 
-  reg_address = reg_address, 
-  data = 0x6, # following tamalero
-  timeout = 10
+i2c_write = partial(
+    lpgbt.i2c_master_write,
+    master_id=master_id,          # e.g. 0, 1, or 2
+    slave_address=slave_address,  # address of slave lpgbt
+    reg_address_width=1,          # always 1 in your case
+    timeout=10                    # constant timeout
 )
 
-after = lpgbt.i2c_master_read(
-  master_id = 0, # either 0, 1, 2, check what tamalero uses
-  slave_address = 0x60, # for slave lpgbt`
-  read_len = 1,
-  reg_address_width = 1,
-  reg_address = 0x1d9 # PUSMSTATUS https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#x1d9-pusmstatus
+i2c_read = partial(
+    lpgbt.i2c_master_read,
+      master_id = master_id, 
+      slave_address = slave_address, # for slave lpgbt`
+      read_len = 1,
+      reg_address_width = 1,
 )
-print(after)
+
+test_read = i2c_read(reg_address=0x0)
+print("Test Read Successfull", test_read)
+
+# lpgbt.i2c_master_reset(0)
+# import time
+# time.sleep(3)
+# lpgbt.i2c_master_reset(0)
+# Run Powerup like tamalero
+
+i2c_write(reg_address=0x036, data=0x0)
+i2c_write(reg_address=0x0fb, data=0x6)
+
+print("reading rom reg, should be 0xa6")
+val = i2c_read(reg_address=0x1d7)
+print(val)
+print(hex(val))
+
+
+
