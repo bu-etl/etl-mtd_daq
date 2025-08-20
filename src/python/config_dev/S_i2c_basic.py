@@ -69,48 +69,49 @@ logger = logging.getLogger("lpgbt")
 
 lpgbt = lpgbt_chip(
     "Master LPGBT",
-    "Readout Board",
     connection="~/mtd-emp-toolbox/mtd-daq/lpGBTv2_3_SO1_ceacmsfw_250603_1554_ETL/hls_connections.xml",
     link=4,
-    # lpgbt_address="0x73"
+    lpgbt_address="0x73"
 )
 
-reg_address = 0x1d9 # PUSMSTATUS, https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#x1d9-pusmstatus
-reg_address_width = 8
-read_len = 5
-before = lpgbt.i2c_master_read(
-  master_id = 0, # either 0, 1, 2, check what tamalero uses
-  slave_address = 0x60, # for slave lpgbt
-  read_len = read_len,
-  reg_address_width = reg_address_width,
-  reg_address = reg_address
-)
-print(before)
+lpgbt.lpgbt_cont_.set_multiwrite(False)
+lpgbt.init_lpgbt()
 
+from ..controllers.mux64_controller import mux64_chip
+
+mux64 = mux64_chip(lpgbt, board="Readout Board") 
+#mux64.write_config()
+
+
+#before = lpgbt.i2c_master_read(
+#  master_id = 0, # either 0, 1, 2, check what tamalero uses
+#  slave_address = 0x60, # for slave lpgbt
+#  read_len = 1,
+#  reg_address_width = 1,
+#  reg_address = 0x1d7
+#)
+#print(before)
+
+lpgbt.i2c_master_reset(0)
+import time
+time.sleep(3)
+lpgbt.i2c_master_reset(0)
 # Run Powerup
 reg_address = 0xfb # https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html?highlight=powerup2#x0fb-powerup2
 lpgbt.i2c_master_write(
   master_id = 0, # either 0, 1, 2, check what tamalero uses
   slave_address = 0x60, # for slave lpgbt
-  reg_address_width = 8, 
+  reg_address_width = 1, 
   reg_address = reg_address, 
   data = 0x6, # following tamalero
+  timeout = 10
 )
 
 after = lpgbt.i2c_master_read(
   master_id = 0, # either 0, 1, 2, check what tamalero uses
-  slave_address = 0x60, # for slave lpgbt
-  read_len = read_len,
-  reg_address_width = reg_address_width,
-  reg_address = reg_address
+  slave_address = 0x60, # for slave lpgbt`
+  read_len = 1,
+  reg_address_width = 1,
+  reg_address = 0x1d9 # PUSMSTATUS https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#x1d9-pusmstatus
 )
 print(after)
-
-
-
-
-
-
-
-
-
