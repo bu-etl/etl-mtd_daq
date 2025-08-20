@@ -118,5 +118,15 @@ val = i2c_read(reg_address=0x1d7)
 print(val)
 print(hex(val))
 
+#     If fails, use the registers below, also check what the CSV is setting
+# maybe it is setting some registers it is not supposed to.
+
+# Important registers to read:
+    # I2CM2CTRL:    https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#x199-i2cm2ctrl
+    #    => Tamalero sets it to be 0x6
+    # I2CM2TRANCNT: https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#reg-i2cm2trancnt
+    #    => This lets you knowo how many transactions were successful
+    # I2CM2STATUS:  https://lpgbt.web.cern.ch/lpgbt/v1/registermap.html#reg-i2cm2status
+    #    => a bunch of status registers regarding the transaction
 
 
