@@ -84,12 +84,12 @@ mux64.write_config()
 
 master_id = 2
 slave_address = 0x70
-
+reg_address_width = 2
 i2c_write = partial(
     lpgbt.i2c_master_write,
     master_id=master_id,          # e.g. 0, 1, or 2
     slave_address=slave_address,  # address of slave lpgbt
-    reg_address_width=1,          # always 1 in your case
+    reg_address_width=reg_address_width,      
     timeout=10                    # constant timeout
 )
 
@@ -98,7 +98,7 @@ i2c_read = partial(
       master_id = master_id, 
       slave_address = slave_address, # for slave lpgbt`
       read_len = 1,
-      reg_address_width = 1,
+      reg_address_width = reg_address_width,
 )
 
 test_read = i2c_read(reg_address=0x0)
