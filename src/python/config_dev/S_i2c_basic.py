@@ -79,6 +79,9 @@ lpgbt = lpgbt_chip(
 lpgbt.lpgbt_cont_.set_multiwrite(False)
 lpgbt.init_lpgbt()
 
+print("sleeping...")
+time.sleep(3)
+
 mux64 = mux64_chip(lpgbt, board="Readout Board") 
 mux64.write_config()
 
@@ -116,7 +119,7 @@ i2c_write(reg_address=0x0fb, data=0x6)
 print("reading rom reg, should be 0xa6")
 val = i2c_read(reg_address=0x1d7)
 print(val)
-print(hex(val))
+print(hex(val[0]))
 
 #     If fails, use the registers below, also check what the CSV is setting
 # maybe it is setting some registers it is not supposed to.
