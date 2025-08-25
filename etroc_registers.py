@@ -43,11 +43,25 @@ class RegMixin:
     def total_bits(self) -> int:
         return sum(c.length for c in self.RegChunks)
     
-    def iter_write(self, value) -> List[Tuple[int, int]]:
-        ...
+    @property
+    def addresses(self) -> list[int]:
+        return sorted(set(c.adr for c in self.RegChunks))
+    
+    def split_value(self, value) -> list[int]:
+        """
+        Splits value into chunks based on bit_masks and ordering of the register chunks (RegChunk)
 
-    def iter_read(self) -> List[int]:
-        ...
+        IMPORTANT: This assumes that the first register in register chunk corresponds to the first bits
+        """
+        split_values = []
+        remaining = value
+        for reg_chunk in self.RegChunks:
+            n = reg_chunk.length
+            low_bits = remaining & ((1 << n) - 1)
+            remaining >>= n # consume
+            masked_value = low_bits << reg_chunk.offset
+            split_values.append(masked_value)
+        return split_values
 
 ######### PIXEL REG DEFINITIONS ############
 class PixRegAddr(IntEnum):
@@ -77,7 +91,7 @@ class PixRegAddr(IntEnum):
     PixRnCnCfg23 = 23
     PixRnCnCfg24 = 24
 
-class PixelReg(Enum, RegMixin):
+class PixelReg(RegMixin, Enum):
     """
     Information extracted from table 13 in ETROC2 documentaition (page 57)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
@@ -100,13 +114,6 @@ class PixelReg(Enum, RegMixin):
     upperTOATrig = [RegChunk(adr = 21, bit_mask = 0b1111_1111), RegChunk(adr = 22, bit_mask = 0b0000_0011)]
     lowerTOTTrig = [RegChunk(adr = 22, bit_mask = 0b1111_1100), RegChunk(adr = 23, bit_mask = 0b0000_0111)]
     upperTOTTrig = [RegChunk(adr = 23, bit_mask = 0b1111_1000), RegChunk(adr = 24, bit_mask = 0b0000_1111)]
-
-    @property
-    def RegChunks(self) -> Tuple[RegChunk, ...]:
-        return self.value
-    @property
-    def total_bits(self) -> int:
-        return sum(s.length for s in self.RegChunks)
 
 ######### PERIPHERY REG DEFINITIONS ############
 class PeripheryRegAddr(IntEnum):
@@ -143,7 +150,7 @@ class PeripheryRegAddr(IntEnum):
     PeriCfg30 = 30
     PeriCfg31 = 31
 
-class PeripheryReg(Enum, RegMixin):
+class PeripheryReg(RegMixin, Enum):
     """
     Registers in the Periphery of the ETROC, not in pixel registers.
 
@@ -178,10 +185,21 @@ class PeripheryReg(Enum, RegMixin):
     disScrambler          = [RegChunk(19, 0b0000_0001)]
     eFuse_TCKHP           = [RegChunk(20, 0b1111_0000)]
     triggerGranularity    = [RegChunk(20, 0b0000_1110)]
-    readoutClockWidthPixel_bit0 = [RegChunk(20, 0b0000_0001)]  # was duplicate key in original dict
     eFuse_Prog            = [
         RegChunk(22, 0b1111_1111),
         RegChunk(23, 0b1111_1111),
         RegChunk(24, 0b1111_1111),
         RegChunk(25, 0b1111_1111),
     ]
+
+#### TESTING
+l1a_reg = PixelReg["L1Adelay"]
+# print(l1a_reg.addresses)
+# print(l1a_reg.split_value(0b1001_1000_1))
+
+val = 0b1001_1000_1
+
+print("GOAL", 0b1000_0000, 0b1001_1000)
+values = l1a_reg.split_value(val)
+for v in values:
+    print(v, bin(v), hex(v))
