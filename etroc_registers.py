@@ -160,42 +160,41 @@ class PeripheryReg(RegMixin, Enum):
     Note the registers are not actual registers in the ETROC. 
     The register names are not very useful, so we grouped the names that are spread across registers as the registers we manipulate in software.
     """
-    VRefGen_PD            = [RegChunk(3,  0b1000_0000)]
-    PLL_ENABLEPLL         = [RegChunk(3,  0b0100_0000)]
-    PLL_vcoRailMode       = [RegChunk(3,  0b0010_0000)]
-    PLL_vcoDAC            = [RegChunk(3,  0b0000_1111)]
-    asyResetGlobalReadout = [RegChunk(14, 0b1000_0000)]
-    asyResetFastcommand   = [RegChunk(14, 0b0100_0000)]
-    asyResetChargeInj     = [RegChunk(14, 0b0010_0000)]
-    readoutClockWidthPixel= [RegChunk(14, 0b0000_1111)]
-    RTx_AmplSel           = [RegChunk(17, 0b1110_0000)]
-    chargeInjectionDelay  = [RegChunk(17, 0b0001_1111)]
-    disLTx                = [RegChunk(18, 0b1000_0000)]
-    onChipL1AConf         = [RegChunk(18, 0b0110_0000)]
-    fcDataDelayEn         = [RegChunk(18, 0b0001_0000)]
-    fcClkDelayEn          = [RegChunk(18, 0b0000_1000)]
-    fcSelfAlignEn         = [RegChunk(18, 0b0000_0100)]
-    softBoot              = [RegChunk(18, 0b0000_0010)]
-    disPowerSequence      = [RegChunk(18, 0b0000_0001)]
-    disRTx                = [RegChunk(19, 0b1000_0000)]
-    singlePort            = [RegChunk(19, 0b0100_0000)]
-    serRateRight          = [RegChunk(19, 0b0011_0000)]
-    serRateLeft           = [RegChunk(19, 0b0000_1100)]
-    linkResetTestPattern  = [RegChunk(19, 0b0000_0010)]
-    disScrambler          = [RegChunk(19, 0b0000_0001)]
-    eFuse_TCKHP           = [RegChunk(20, 0b1111_0000)]
-    triggerGranularity    = [RegChunk(20, 0b0000_1110)]
+    VRefGen_PD            = [RegChunk(adr = 3,  bit_mask = 0b1000_0000)]
+    PLL_ENABLEPLL         = [RegChunk(adr = 3,  bit_mask = 0b0100_0000)]
+    PLL_vcoRailMode       = [RegChunk(adr = 3,  bit_mask = 0b0010_0000)]
+    PLL_vcoDAC            = [RegChunk(adr = 3,  bit_mask = 0b0000_1111)]
+    asyResetGlobalReadout = [RegChunk(adr = 14, bit_mask = 0b1000_0000)]
+    asyResetFastcommand   = [RegChunk(adr = 14, bit_mask = 0b0100_0000)]
+    asyResetChargeInj     = [RegChunk(adr = 14, bit_mask = 0b0010_0000)]
+    readoutClockWidthPixel= [RegChunk(adr = 14, bit_mask = 0b0000_1111)]
+    RTx_AmplSel           = [RegChunk(adr = 17, bit_mask = 0b1110_0000)]
+    chargeInjectionDelay  = [RegChunk(adr = 17, bit_mask = 0b0001_1111)]
+    disLTx                = [RegChunk(adr = 18, bit_mask = 0b1000_0000)]
+    onChipL1AConf         = [RegChunk(adr = 18, bit_mask = 0b0110_0000)]
+    fcDataDelayEn         = [RegChunk(adr = 18, bit_mask = 0b0001_0000)]
+    fcClkDelayEn          = [RegChunk(adr = 18, bit_mask = 0b0000_1000)]
+    fcSelfAlignEn         = [RegChunk(adr = 18, bit_mask = 0b0000_0100)]
+    softBoot              = [RegChunk(adr = 18, bit_mask = 0b0000_0010)]
+    disPowerSequence      = [RegChunk(adr = 18, bit_mask = 0b0000_0001)]
+    disRTx                = [RegChunk(adr = 19, bit_mask = 0b1000_0000)]
+    singlePort            = [RegChunk(adr = 19, bit_mask = 0b0100_0000)]
+    serRateRight          = [RegChunk(adr = 19, bit_mask = 0b0011_0000)]
+    serRateLeft           = [RegChunk(adr = 19, bit_mask = 0b0000_1100)]
+    linkResetTestPattern  = [RegChunk(adr = 19, bit_mask = 0b0000_0010)]
+    disScrambler          = [RegChunk(adr = 19, bit_mask = 0b0000_0001)]
+    eFuse_TCKHP           = [RegChunk(adr = 20, bit_mask = 0b1111_0000)]
+    triggerGranularity    = [RegChunk(adr = 20, bit_mask = 0b0000_1110)]
     eFuse_Prog            = [
-        RegChunk(22, 0b1111_1111),
-        RegChunk(23, 0b1111_1111),
-        RegChunk(24, 0b1111_1111),
-        RegChunk(25, 0b1111_1111),
+        RegChunk(adr = 22, bit_mask = 0b1111_1111),
+        RegChunk(adr = 23, bit_mask = 0b1111_1111),
+        RegChunk(adr = 24, bit_mask = 0b1111_1111),
+        RegChunk(adr = 25, bit_mask = 0b1111_1111),
     ]
 
 #### TESTING
 l1a_reg = PixelReg["L1Adelay"]
-# print(l1a_reg.addresses)
-# print(l1a_reg.split_value(0b1001_1000_1))
+print(l1a_reg.total_bits, l1a_reg.addresses)
 
 val = 0b1001_1000_1
 
@@ -203,3 +202,7 @@ print("GOAL", 0b1000_0000, 0b1001_1000)
 values = l1a_reg.split_value(val)
 for v in values:
     print(v, bin(v), hex(v))
+
+
+for reg in l1a_reg.RegChunks:
+    print(reg.adr, reg.address_name, reg.length, reg.offset, reg.bit_mask)
