@@ -16,13 +16,6 @@ from collections.abc import Callable
 import numpy as np
 from collections import UserList
 
-class PixMatrix(UserList):
-    def __init__(self, pixels):
-        super().__init__(pixels)
-
-    def write(self, register: int | str | PixReg, value:int):
-        ...
-
 @dataclass
 class Pixel:
     row: int 
@@ -56,7 +49,7 @@ class Pixel:
             raise TypeError(f"Unsupported type for register {type(register)}")
 
         for adr, val in zip(reg.addresses, reg.split_value(value)):
-            full_addr = self.full_address(adr, is_status_reg = True)
+            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
             self.i2c_write(reg_address=full_addr, data=val)
 
 
@@ -78,7 +71,7 @@ class Pixel:
 
         values = []
         for adr in reg.addresses:
-            full_addr = self.full_address(adr, is_status_reg = True)            
+            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)            
             values.append(self.i2c_read(reg_address = full_addr)[0])
         return reg.merge_values(values)
     
@@ -150,6 +143,30 @@ class Pixel:
         """
         is_pixel_reg = True
         return adr | self.row << 5 | self.col << 9 | broadcast << 13 | is_status_reg <<14 | is_pixel_reg << 15
+
+
+@dataclass
+class PixMatrix(UserList):
+    def __init__(self, pixels):
+        super().__init__(pixels)
+
+    def write(self, register: int | str | PixReg, value:int):
+        if isinstance(register, int):
+            reg = self.full_address(adr=register, broadcast=True)
+            self.i2c_write(reg_address=reg, data=value)
+            return
+        elif isinstance(register, str):
+            reg = PixReg[register]
+        elif isinstance(register, PixReg):
+            reg = register
+        else:
+            raise TypeError(f"Unsupported type for register {type(register)}")
+
+        values = []
+        for adr in reg.addresses:
+            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg, broadcast=True)            
+            values.append(self.i2c_read(reg_address = full_addr)[0])
+        return reg.merge_values(values)
 
 
 # ---------------------------------------------------------------
