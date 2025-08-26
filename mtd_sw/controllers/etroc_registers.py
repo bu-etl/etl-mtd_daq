@@ -2,7 +2,7 @@
 Authors: Naomi Gonzalez and Hayden Swanson
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-~~~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+~~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 Description:
@@ -97,8 +97,11 @@ class RegMixin:
         Inverse of split_value: take per-address masked values (ensure it is the same order as defined in the Enum) 
         and reconstruct the composite integer
         """
+        if not isinstance(values, list):
+            values = [values]
         if len(values) != len(self.RegChunks):
             raise ValueError("length mismatch")
+            
         composite = 0
         shift = 0
         for val, chunk in zip(values, self.RegChunks):
@@ -189,6 +192,7 @@ class PeriReg(RegMixin, Enum):
     disScrambler          = [RegChunk(adr = 19, bit_mask = 0b0000_0001)]
     eFuse_TCKHP           = [RegChunk(adr = 20, bit_mask = 0b1111_0000)]
     triggerGranularity    = [RegChunk(adr = 20, bit_mask = 0b0000_1110)]
+    mergeTriggerData      = [RegChunk(adr = 20, bit_mask = 0b0000_0001)]
     eFuse_Prog            = [
         RegChunk(adr = 22, bit_mask = 0b1111_1111),
         RegChunk(adr = 23, bit_mask = 0b1111_1111),
@@ -232,9 +236,3 @@ if __name__ == "__main__":
     print("Single-chunk register tests passed")
 
 
-
-
-
-
-
-    
