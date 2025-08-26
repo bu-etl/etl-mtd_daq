@@ -28,10 +28,17 @@ class Pixel:
         self.i2c_read = i2c_read
         self.i2c_write = i2c_write
 
-    # Hayden
+
     def write(self, register: int | str | PixReg, value: int):
+        """
+        Write to ETROC pixel register through I2C Bus
+
+        register: ETROC pixel register name(str) or pixel register number(int)
+        value: value to write to a specific ETROC pixel register
+        """
         if isinstance(register, int):
-            self.i2c_write(register, value)
+            reg = self.full_address(adr=register)
+            self.i2c_write(reg, value)
             return
         elif isinstance(register, str):
             reg = PixReg[register]
@@ -47,10 +54,16 @@ class Pixel:
                                           is_status_reg = True)
             self.i2c_write(full_addr, val)
 
-    # Hayden
+
     def read(self, register: int | str) -> int:
+        """
+        Reads from ETROC pixel register through I2C Bus
+
+        register: ETROC pixel register name(str) or pixel register number(int)
+        """
         if isinstance(register, int):
-            return self.i2c_read(register)
+            reg =  self.full_address(adr=register)
+            return self.i2c_read(reg)
         elif isinstance(register, str):
             reg = PixReg[register]
         elif isinstance(register, PixReg):
@@ -67,7 +80,7 @@ class Pixel:
             values.append(self.i2c_read(full_addr))
         return reg.merge_values(values)
     
-    # Hayden
+
     def auto_threshold_scan(self, timeout = 3):
         
         self.write(PixReg.CLKEn_THCal, 1)
@@ -108,12 +121,10 @@ class Pixel:
         return baseline, noise_width
 
     def full_address(self, adr: int, 
-                    row:int = 0, 
-                    col:int = 0, 
                     broadcast:bool = False, 
                     is_status_reg:bool = False):
         """
-        Construct a full ETROC register address by encoding address components into bit fields.
+        Construct a full ETROC register address by encoding address components into bit fields
         
         Address for in=pixel I2C access (see table 10 on page 48 of ETROC2 manual):
         - Bits 0-4:   In pixel register address
@@ -123,21 +134,23 @@ class Pixel:
         - Bit 14:     1: status, 0: configuration
         - Bit 15:     1: pixel matrix, 0: periphery
         
-        Args:
-            adr: Base register address (0-31)
-            row: Pixel row coordinate (0-15, default: 0)
-            col: Pixel column coordinate (0-15, default: 0)
-            broadcast: Enable broadcast mode to all pixels (default: False)
-            is_status_reg: Address targets a status register (default: False)
-            is_pixel_reg: Address targets a pixel register (default: False)
 
-        Returns:
-            int: Complete 16-bit encoded address for ETROC register access
+        adr: Base register address (0-31)
+        row: Pixel row coordinate (0-15, default: 0)
+        col: Pixel column coordinate (0-15, default: 0)
+        broadcast: Enable broadcast mode to all pixels (default: False)
+        is_status_reg: Address targets a status register (default: False)
+        is_pixel_reg: Address targets a pixel register (default: False)
+
+        Returns -> Complete 16-bit encoded address for ETROC register access
         """
         is_pixel_reg = True
-        return adr | row << 5 | col << 9 | broadcast << 13 | is_status_reg <<14 | is_pixel_reg << 15
+        return adr | self.row << 5 | self.col << 9 | broadcast << 13 | is_status_reg <<14 | is_pixel_reg << 15
 
 
+# ---------------------------------------------------------------
+# Main ETROC Chip Class
+# ---------------------------------------------------------------
 class etroc_chip:
     addr_i2c: int
     lpgbt: lpgbt_chip
@@ -170,7 +183,6 @@ class etroc_chip:
 
         self.is_connected()
 
-        # HAYDEN
         self.pixels = [
             [Pixel(self.i2c_read, self.i2c_write, row, col) for col in range(16)] for row in range(16)]
         
@@ -198,6 +210,9 @@ class etroc_chip:
 
 
     def reset(self, hard=False):
+        """
+        Issues Hard or Soft Reset to ETROC chip
+        """
         if hard:
             self.lpgbt.write_gpio_output("RESET1",0)
             time.sleep(0.05)
@@ -209,23 +224,65 @@ class etroc_chip:
 
 
     def config(self):
+        """
+        Writes Initial ETL Default Configuration for ETROC registers
+        """
         if not self.is_connected():
             raise ConnectionError(f"ETROC addr: {self. addr_i2c} Not Connected")
 
         self.reset()
-        self.write("singlePort", 0)         # use both ports
-        self.write("mergeTriggerData", 1)   # merge trigger and data
-        self.write("disScrambler", 1)       # disable scrambler
-        self.write("serRateRight", 0)       # right port 320Mbps rate
-        self.write("serRateLeft", 0)        # left port 320Mbps rate
+        self.write(PeriReg.singlePort, 0)         # use both ports
+        self.write(PeriReg.mergeTriggerData, 1)   # merge trigger and data
+        self.write(PeriyReg.disScrambler, 1)      # disable scrambler
+        self.write(PeriReg.serRateRight, 0)       # right port 320Mbps rate
+        self.write(PeriReg.serRateLeft, 0)        # left port 320Mbps rate
+
+        # TODO: Write Chip ID to EFUSE
+
+        # configuration as per discussion with ETROC2 developers
+        # -> values from Tamalero ETROC.py
+        self.write(PeriReg.onChipL1AConf, 0) 
+        self.write(PeriReg.PLL_ENABLEPLL, 1)
+        for row in range(16):
+            for col in range(16):
+                pix = self.pixels[row][col]
+                pix.write(PixReg.L1Adelay, 0x01f5)
+
+                # opening TOA / TOT / Cal windows
+                pix.write(PixReg.upperTOA, 0x3ff)
+                pix.write(PixReg.lowerTOA, 0)
+                pix.write(PixReg.upperTOT, 0x1ff)
+                pix.write(PixReg.lowerTOT, 0)
+                pix.write(PixReg.upperCal, 0x3ff)
+                pix.write(PixReg.lowerCal, 0)
+
+                # Configuring the trigger stream
+                pix.write(PixReg.disTrigPath, 1)
+                pix.write(PixReg.upperTOATrig, 0x3ff)
+                pix.write(PixReg.lowerTOATrig, 0)
+                pix.write(PixReg.upperTOTTrig, 0x1ff)
+                pix.write(PixReg.lowerTOTTrig, 0)
+                pix.write(PixReg.upperCalTrig, 0x3ff)
+                pix.write(PixReg.lowerCalTrig, 0)
+
+        self.reset()
 
 
     # TODO: change this to set/getter
     def power_Vref(self, val: bool):
+        """
+        Power up/down internal VREF on ETROC
+        """
         self.write("VRefGen_PD", val)
 
-    # HAYDEN
+
     def write(self, register: int | str | PeriReg, value: int):
+        """
+        Write to ETROC register through lpGBT I2C Bus
+
+        register: ETROC register name(str) or register number(int)
+        value: value to write to a specific ETROC register
+        """
         if isinstance(register, int):
             self.i2c_write(register, value)
             return
@@ -240,8 +297,14 @@ class etroc_chip:
             full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
             self.i2c_write(full_addr, val)
 
-    # HAYDEN
+
     def read(self, register: int | str) -> int:
+        """
+        Reads from ETROC register through lpGBT I2C Bus
+
+        register: ETROC register name(str) or register number(int)
+        """
+
         if isinstance(register, int):
             return self.i2c_read(register)
         elif isinstance(register, str):
@@ -257,10 +320,11 @@ class etroc_chip:
             values.append(self.i2c_read(full_addr))
         return reg.merge_values(values)
 
-    # HAYDEN
-    def run_threshold_scan(self):
 
-        # broadcast later....
+    def run_threshold_scan(self):
+        """
+        Preform threshold scan on full ETROC chip (all pixels)
+        """
         for row in range(16):
             for col in range(16):
                 pix = self.pixels[row][col]
@@ -300,28 +364,15 @@ class etroc_chip:
         - Bit 8:      Status register flag (1 for status, 0 for configuration)
         - Bits 9-15:  Reserved (0)
         
-        Args:
-            adr: Base register address (0-255)
-            is_status_reg: True for status registers, False for configuration (default: False)
+        adr: Base register address 
+        is_status_reg: True for status registers, False for configuration
         
-        Returns:
-            int: Complete 16-bit encoded address for ETROC periphery register access
-            
-        Examples:
-            >>> full_address(0x10)  # Configuration register 16
-            16  # 0x0010
-            >>> full_address(0x05, is_status_reg=True)  # Status register 5
-            261  # 0x0105
-            >>> full_address(0x20, is_status_reg=True)  # SEU Counter base
-            288  # 0x0120
-        
-        Note:
-            Magic number register (0x20) should be accessed as configuration:
-            full_address(0x20, is_status_reg=False) -> 0x0020
+        Returns -> Complete 16-bit encoded address for ETROC periphery register access
         """
         if is_status_reg:
-            # Status registers: 0x0100 base + address offset
             return 0x0100 | adr
         else:
-            # Configuration registers: direct address (0x0000 - 0x001F, 0x0020)
             return adr
+
+
+
