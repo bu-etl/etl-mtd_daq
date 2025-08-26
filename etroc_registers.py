@@ -3,15 +3,15 @@ Authors: Naomi Gonzalez and Hayden Swanson
 
 Outline script of ETROC registers
 """
-
 from dataclasses import dataclass
-from enum import Enum, IntEnum
-from typing import Tuple, List
+from enum import Enum
+from typing import Tuple
 
 @dataclass(frozen=True)
 class RegChunk:
     adr: int
     bit_mask: int
+    is_status_reg: bool = False
 
     @property
     def offset(self) -> int:
@@ -27,10 +27,6 @@ class RegChunk:
         if shifted & (shifted + 1):
             raise ValueError(f"mask 0x{self.bit_mask:X} not contiguous")
         return shifted.bit_length()
-    
-    @property
-    def address_name(self) -> str:
-        return PixRegAddr(self.adr).name
 
 class RegMixin:
     """Mixin for Enums"""
@@ -47,6 +43,10 @@ class RegMixin:
     def addresses(self) -> list[int]:
         return sorted(set(c.adr for c in self.RegChunks))
     
+    @property
+    def is_status_reg(self):
+        return all(reg.is_status_reg for reg in self.RegChunks)
+    
     def split_value(self, value) -> list[int]:
         """
         Splits value into chunks based on bit_masks and ordering of the register chunks (RegChunk)
@@ -62,36 +62,26 @@ class RegMixin:
             masked_value = low_bits << reg_chunk.offset
             split_values.append(masked_value)
         return split_values
+    
+    def merge_values(self, values: list) -> int:
+        """
+        Inverse of split_value: take per-address masked values (same order
+        as self.RegChunks) and reconstruct the composite integer (LSB-first).
+        """
+        if len(values) != len(self.RegChunks):
+            raise ValueError("length mismatch")
+        composite = 0
+        shift = 0
+        for val, chunk in zip(values, self.RegChunks):
+            raw = (val & chunk.bit_mask) >> chunk.offset
+            composite |= raw << shift
+            shift += chunk.length
+        return composite
+    
 
 ######### PIXEL REG DEFINITIONS ############
-class PixRegAddr(IntEnum):
-    PixRnCnCfg0= 0
-    PixRnCnCfg1= 1
-    PixRnCnCfg2= 2
-    PixRnCnCfg3= 3
-    PixRnCnCfg4= 4
-    PixRnCnCfg5= 5
-    PixRnCnCfg6= 6
-    PixRnCnCfg7= 7
-    PixRnCnCfg8= 8
-    PixRnCnCfg9= 9
-    PixRnCnCfg10 = 10
-    PixRnCnCfg11 = 11
-    PixRnCnCfg12 = 12
-    PixRnCnCfg13 = 13
-    PixRnCnCfg14 = 14
-    PixRnCnCfg15 = 15
-    PixRnCnCfg16 = 16
-    PixRnCnCfg17 = 17
-    PixRnCnCfg18 = 18
-    PixRnCnCfg19 = 19
-    PixRnCnCfg20 = 20
-    PixRnCnCfg21 = 21
-    PixRnCnCfg22 = 22
-    PixRnCnCfg23 = 23
-    PixRnCnCfg24 = 24
 
-class PixelReg(RegMixin, Enum):
+class PixReg(RegMixin, Enum):
     """
     Information extracted from table 13 in ETROC2 documentaition (page 57)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
@@ -99,58 +89,49 @@ class PixelReg(RegMixin, Enum):
     Note the registers are not actual registers in the ETROC. 
     The register names are not very useful, so we grouped the names that are spread across registers as the registers we manipulate in software.
     """
-    L1Adelay     = [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9, bit_mask = 0b1111_1111)]
-    disTrigPath  = [RegChunk(adr = 7,  bit_mask = 0b0000_0100)]
-    QInjEn       = [RegChunk(adr = 1,  bit_mask = 0b0010_0000)]
-    lowerCal     = [RegChunk(adr = 10, bit_mask = 0b1111_1111), RegChunk(adr = 11, bit_mask = 0b0000_0011)]
-    upperCal     = [RegChunk(adr = 11, bit_mask = 0b1111_1100), RegChunk(adr = 12, bit_mask = 0b0000_1111)]
-    upperTOA     = [RegChunk(adr = 13, bit_mask = 0b1000_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
-    lowerTOA     = [RegChunk(adr = 12, bit_mask = 0b1111_0000), RegChunk(adr = 13, bit_mask = 0b0011_1111)]
-    lowerTOT     = [RegChunk(adr = 15, bit_mask = 0b1111_1111), RegChunk(adr = 16, bit_mask = 0b0000_0001)]
-    upperTOT     = [RegChunk(adr = 16, bit_mask = 0b1111_1110), RegChunk(adr = 17, bit_mask = 0b0000_0011)]
-    lowerCalTrig = [RegChunk(adr = 17, bit_mask = 0b1111_1100), RegChunk(adr = 18, bit_mask = 0b0000_1111)]
-    upperCalTrig = [RegChunk(adr = 18, bit_mask = 0b1111_0000), RegChunk(adr = 19, bit_mask = 0b0011_1111)]
-    lowerTOATrig = [RegChunk(adr = 19, bit_mask = 0b1100_0000), RegChunk(adr = 20, bit_mask = 0b1111_1111)]
-    upperTOATrig = [RegChunk(adr = 21, bit_mask = 0b1111_1111), RegChunk(adr = 22, bit_mask = 0b0000_0011)]
-    lowerTOTTrig = [RegChunk(adr = 22, bit_mask = 0b1111_1100), RegChunk(adr = 23, bit_mask = 0b0000_0111)]
-    upperTOTTrig = [RegChunk(adr = 23, bit_mask = 0b1111_1000), RegChunk(adr = 24, bit_mask = 0b0000_1111)]
+    L1Adelay        = [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9, bit_mask = 0b1111_1111)]
+    CLKEn_THCal     = [RegChunk(adr = 3,  bit_mask = 0b0000_1000)]
+    Bypass_THCal    = [RegChunk(adr = 3,  bit_mask = 0b0000_0100)]
+    BufEn_THCal     = [RegChunk(adr = 3,  bit_mask = 0b0000_0010)]
+    RSTn_THCal      = [RegChunk(adr = 3,  bit_mask = 0b0000_0001)]
+    ScanStart_THCal = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
+    DAC             = [RegChunk(adr = 4,  bit_mask = 0b1111_1111), RegChunk(adr = 5, bit_mask = 0b0000_0011)]
+    TH_offset       = [RegChunk(adr = 5,  bit_mask = 0b1111_1100)]
+    enable_TDC      = [RegChunk(adr = 6,  bit_mask = 0b1000_0000)]
+    disTrigPath     = [RegChunk(adr = 7,  bit_mask = 0b0000_0100)]
+    disDataReadout  = [RegChunk(adr = 7,  bit_mask = 0b0000_0010)]
+    QInjEn          = [RegChunk(adr = 1,  bit_mask = 0b0010_0000)]
+    lowerCal        = [RegChunk(adr = 10, bit_mask = 0b1111_1111), RegChunk(adr = 11, bit_mask = 0b0000_0011)]
+    upperCal        = [RegChunk(adr = 11, bit_mask = 0b1111_1100), RegChunk(adr = 12, bit_mask = 0b0000_1111)]
+    upperTOA        = [RegChunk(adr = 13, bit_mask = 0b1000_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
+    lowerTOA        = [RegChunk(adr = 12, bit_mask = 0b1111_0000), RegChunk(adr = 13, bit_mask = 0b0011_1111)]
+    lowerTOT        = [RegChunk(adr = 15, bit_mask = 0b1111_1111), RegChunk(adr = 16, bit_mask = 0b0000_0001)]
+    upperTOT        = [RegChunk(adr = 16, bit_mask = 0b1111_1110), RegChunk(adr = 17, bit_mask = 0b0000_0011)]
+    lowerCalTrig    = [RegChunk(adr = 17, bit_mask = 0b1111_1100), RegChunk(adr = 18, bit_mask = 0b0000_1111)]
+    upperCalTrig    = [RegChunk(adr = 18, bit_mask = 0b1111_0000), RegChunk(adr = 19, bit_mask = 0b0011_1111)]
+    lowerTOATrig    = [RegChunk(adr = 19, bit_mask = 0b1100_0000), RegChunk(adr = 20, bit_mask = 0b1111_1111)]
+    upperTOATrig    = [RegChunk(adr = 21, bit_mask = 0b1111_1111), RegChunk(adr = 22, bit_mask = 0b0000_0011)]
+    lowerTOTTrig    = [RegChunk(adr = 22, bit_mask = 0b1111_1100), RegChunk(adr = 23, bit_mask = 0b0000_0111)]
+    upperTOTTrig    = [RegChunk(adr = 23, bit_mask = 0b1111_1000), RegChunk(adr = 24, bit_mask = 0b0000_1111)]
+    
+    # STATUS REGISTERS
+    ACC          = [RegChunk(adr = 5, bit_mask = 0b1111_1111, is_status_reg = True),
+                    RegChunk(adr = 6, bit_mask = 0b1111_1111, is_status_reg = True)]
+    
+    ScanDone     = [RegChunk(adr = 1, bit_mask = 0b0000_0001, is_status_reg = True)]
+    
+    BL           = [RegChunk(adr = 2, bit_mask = 0b1111_1111, is_status_reg = True), 
+                    RegChunk(adr = 3, bit_mask = 0b0000_0011, is_status_reg = True)]
+    
+    NW           = [RegChunk(adr = 1, bit_mask = 0b0001_1110, is_status_reg = True)]
 
-######### PERIPHERY REG DEFINITIONS ############
-class PeripheryRegAddr(IntEnum):
-    PeriCfg0 = 0
-    PeriCfg1 = 1
-    PeriCfg2 = 2
-    PeriCfg3 = 3
-    PeriCfg4 = 4
-    PeriCfg5 = 5
-    PeriCfg6 = 6
-    PeriCfg7 = 7
-    PeriCfg8 = 8
-    PeriCfg9 = 9
-    PeriCfg10 = 10
-    PeriCfg11 = 11
-    PeriCfg12 = 12
-    PeriCfg13 = 13
-    PeriCfg14 = 14
-    PeriCfg15 = 15
-    PeriCfg16 = 16
-    PeriCfg17 = 17
-    PeriCfg18 = 18
-    PeriCfg19 = 19
-    PeriCfg20 = 20
-    PeriCfg21 = 21
-    PeriCfg22 = 22
-    PeriCfg23 = 23
-    PeriCfg24 = 24
-    PeriCfg25 = 25
-    PeriCfg26 = 26
-    PeriCfg27 = 27
-    PeriCfg28 = 28
-    PeriCfg29 = 29
-    PeriCfg30 = 30
-    PeriCfg31 = 31
+    TH           = [RegChunk(adr = 3, bit_mask = 0b1100_0000, is_status_reg = True), 
+                    RegChunk(adr = 4, bit_mask = 0b1111_1111, is_status_reg = True)]
+    
+    THState      = [RegChunk(adr = 1, bit_mask = 0b1110_0000, is_status_reg = True)]
 
-class PeripheryReg(RegMixin, Enum):
+
+class PeriReg(RegMixin, Enum):
     """
     Registers in the Periphery of the ETROC, not in pixel registers.
 
@@ -192,17 +173,26 @@ class PeripheryReg(RegMixin, Enum):
         RegChunk(adr = 25, bit_mask = 0b1111_1111),
     ]
 
+
+
+
+
 #### TESTING
-l1a_reg = PixelReg["L1Adelay"]
-print(l1a_reg.total_bits, l1a_reg.addresses)
+# l1a_reg = PixReg["L1Adelay"]
+# print(l1a_reg.total_bits, l1a_reg.addresses)
 
-val = 0b1001_1000_1
+# val = 0b1001_1000_1
 
-print("GOAL", 0b1000_0000, 0b1001_1000)
-values = l1a_reg.split_value(val)
-for v in values:
-    print(v, bin(v), hex(v))
+# print("GOAL", 0b1000_0000, 0b1001_1000)
+# values = l1a_reg.split_value(val)
+# for v in values:
+#     print(v, bin(v), hex(v))
 
 
-for reg in l1a_reg.RegChunks:
-    print(reg.adr, reg.address_name, reg.length, reg.offset, reg.bit_mask)
+# for reg in l1a_reg.RegChunks:
+#     print(reg.adr, reg.address_name, reg.length, reg.offset, reg.bit_mask)
+
+
+# print(type(PeriReg.disScrambler))
+
+# print(isinstance(PeriReg.disLTx, PeriReg))
