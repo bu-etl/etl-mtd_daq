@@ -50,8 +50,9 @@ class Pixel:
 
         for adr, val in zip(reg.addresses, reg.split_value(value)):
             full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
+            print(f"Pixel Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}") 
             self.i2c_write(reg_address=full_addr, data=val)
-
+        print("================\n")
 
     def read(self, register: int | str) -> int:
         """
@@ -73,6 +74,8 @@ class Pixel:
         for adr in reg.addresses:
             full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)            
             values.append(self.i2c_read(reg_address = full_addr)[0])
+            print(f"Pixel Read: {adr=}, {full_addr=}, {values=}")
+        print("=============\n")
         return reg.merge_values(values)
     
 
@@ -84,7 +87,6 @@ class Pixel:
         self.write(PixReg.RSTn_THCal, 0) # Check with Murtaza: Needed?
         self.write(PixReg.RSTn_THCal, 1) # Check with Murtaza: Needed?
         self.write(PixReg.ScanStart_THCal, 1)
-        time.sleep(0.1)
         self.write(PixReg.ScanStart_THCal, 0)
         
         done = False
@@ -94,7 +96,6 @@ class Pixel:
             done = True
             try:
                 done = self.read(PixReg.ScanDone)
-                print(f"ScanDone returned: {done}")
             except:
                 print("ScanDone read failed.")
             # time.sleep(0.01) # Murtaza: Increase (before 0.001)
@@ -148,12 +149,14 @@ class Pixel:
 @dataclass
 class PixMatrix(UserList):
     def __init__(self, pixels):
+        self.pixels = pixels
         super().__init__(pixels)
 
     def write(self, register: int | str | PixReg, value:int):
+        _pix = self.pixels[0][0]
         if isinstance(register, int):
-            reg = self.full_address(adr=register, broadcast=True)
-            self.i2c_write(reg_address=reg, data=value)
+            reg = _pix.full_address(adr=register, broadcast=True)
+            _pix.i2c_write(reg_address=reg, data=value)
             return
         elif isinstance(register, str):
             reg = PixReg[register]
@@ -162,12 +165,12 @@ class PixMatrix(UserList):
         else:
             raise TypeError(f"Unsupported type for register {type(register)}")
 
-        values = []
-        for adr in reg.addresses:
-            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg, broadcast=True)            
-            values.append(self.i2c_read(reg_address = full_addr)[0])
-        return reg.merge_values(values)
+        for adr, val in zip(reg.addresses, reg.split_value(value)):
+            full_addr = _pix.full_address(adr, is_status_reg=reg.is_status_reg, broadcast=True)            
+            _pix.i2c_write(reg_address = full_addr, data = val)
 
+            print(f"Pixel Broadcast  Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}")
+        print("============\n")
 
 # ---------------------------------------------------------------
 # Main ETROC Chip Class
@@ -208,8 +211,8 @@ class etroc_chip:
         self.is_connected()
         print("ETROC Connection status:", self.connected)
 
-        self.pixels = [
-            [Pixel(self.i2c_read, self.i2c_write, row, col) for col in range(16)] for row in range(16)]
+        self.pixels = PixMatrix([
+            [Pixel(self.i2c_read, self.i2c_write, row, col) for col in range(16)] for row in range(16)])
         
         self.DAC_min = 600 #mV
         self.DAC_max = 1000 #mV
@@ -228,7 +231,6 @@ class etroc_chip:
         """
         try:
             test = self.read(0x0)
-            print(test)
             self.connected = True if test==[0x2c] else False
         except TimeoutError:
             self.connected = False
@@ -269,28 +271,25 @@ class etroc_chip:
         # -> values from Tamalero ETROC.py
         self.write(PeriReg.onChipL1AConf, 0) 
         self.write(PeriReg.PLL_ENABLEPLL, 1)
-        for row in range(16):
-            for col in range(16):
-                print(f"Configuring pixel: {row=}, {col=}")
-                pix = self.pixels[row][col]
-                pix.write(PixReg.L1Adelay, 0x01f5)
+        
+        ## Pixel Configurations
+        self.pixels.write(PixReg.L1Adelay, 0x01f5)
+        # opening TOA / TOT / Cal windows
+        self.pixels.write(PixReg.upperTOA, 0x3ff)
+        self.pixels.write(PixReg.lowerTOA, 0)
+        self.pixels.write(PixReg.upperTOT, 0x1ff)
+        self.pixels.write(PixReg.lowerTOT, 0)
+        self.pixels.write(PixReg.upperCal, 0x3ff)
+        self.pixels.write(PixReg.lowerCal, 0)
 
-                # opening TOA / TOT / Cal windows
-                pix.write(PixReg.upperTOA, 0x3ff)
-                pix.write(PixReg.lowerTOA, 0)
-                pix.write(PixReg.upperTOT, 0x1ff)
-                pix.write(PixReg.lowerTOT, 0)
-                pix.write(PixReg.upperCal, 0x3ff)
-                pix.write(PixReg.lowerCal, 0)
-
-                # Configuring the trigger stream
-                pix.write(PixReg.disTrigPath, 1)
-                pix.write(PixReg.upperTOATrig, 0x3ff)
-                pix.write(PixReg.lowerTOATrig, 0)
-                pix.write(PixReg.upperTOTTrig, 0x1ff)
-                pix.write(PixReg.lowerTOTTrig, 0)
-                pix.write(PixReg.upperCalTrig, 0x3ff)
-                pix.write(PixReg.lowerCalTrig, 0)
+        # Configuring the trigger stream
+        self.pixels.write(PixReg.disTrigPath,  1)
+        self.pixels.write(PixReg.upperTOATrig, 0x3ff)
+        self.pixels.write(PixReg.lowerTOATrig, 0)
+        self.pixels.write(PixReg.upperTOTTrig, 0x1ff)
+        self.pixels.write(PixReg.lowerTOTTrig, 0)
+        self.pixels.write(PixReg.upperCalTrig, 0x3ff)
+        self.pixels.write(PixReg.lowerCalTrig, 0)
 
         self.reset()
 
@@ -323,7 +322,8 @@ class etroc_chip:
         for adr, val in zip(reg.addresses, reg.split_value(value)):
             full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
             self.i2c_write(reg_address=full_addr, data=val)
-
+            print(f"Peri Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}")
+        print("=======================\n")
 
     def read(self, register: int | str) -> int:
         """
@@ -345,6 +345,8 @@ class etroc_chip:
         for adr in reg.addresses:
             full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
             values.append(self.i2c_read(reg_address=full_addr)[0])
+            print(f"Peri Read: {adr=}, {full_addr=}, values={values}")
+        print("===============\n")
         return reg.merge_values(values)
 
 
@@ -352,15 +354,11 @@ class etroc_chip:
         """
         Preform threshold scan on full ETROC chip (all pixels)
         """
-        for row in range(16):
-            for col in range(16):
-                pix = self.pixels[row][col]
-
-                pix.write(PixReg.Bypass_THCal, 1)
-                pix.write(PixReg.disDataReadout, 1)
-                pix.write(PixReg.enable_TDC, 0)
-                pix.write(PixReg.DAC, 1023)
-                pix.write(PixReg.TH_offset, 63)
+        self.pixels.write(PixReg.Bypass_THCal, 1)
+        self.pixels.write(PixReg.disDataReadout, 1)
+        self.pixels.write(PixReg.enable_TDC, 0)
+        self.pixels.write(PixReg.DAC, 1023)
+        self.pixels.write(PixReg.TH_offset, 63)
 
         baselines = np.empty([16, 16])
         noisewidths = np.empty([16, 16])
@@ -403,6 +401,4 @@ class etroc_chip:
             return 0x0100 | adr
         else:
             return adr
-
-
 
