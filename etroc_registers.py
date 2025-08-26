@@ -1,13 +1,14 @@
 """
 Authors: Naomi Gonzalez and Hayden Swanson
 
-!!!!!!!!!!!!!!!!!IMPORTANT!!!!!!!!!!!!!!!!! 
-~~~~~~~~~~~~~~~DO NOT CHANGE~~~~~~~~~~~~~~~
-This file defines ETROC2 registers in a useful way.
-In the ETROC useful values are saved across registers to save space.
-This groups these useful values into our own sw "registers" (in PixReg and PeriReg) by use of Enum classes, 
-and handles some of the logic with split values across addresses
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+~~~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+Description:
+This file defines ETROC2 register addresses and formats (e.g bit length, mask, offset)
+- ETROC registers are places into Pixel or Peripheral Registers
+- Code handles the logic of registers that are split across two addresses
 """
 from dataclasses import dataclass
 from enum import Enum
@@ -16,8 +17,7 @@ from typing import Tuple
 @dataclass(frozen=True)
 class RegChunk:
     """
-    Lets you select part of an actual ETROC2 physical register. 
-    These chunks of registers are what we group into more useful "registers"
+    Select part of a real physical ETROC2 physical register
     """
     adr: int
     bit_mask: int
@@ -26,7 +26,7 @@ class RegChunk:
     @property
     def offset(self) -> int:
         """
-        Calculates the number of 0 bits in the bit_mask word until you get a 1.
+        Calculates the number of 0 bits in the bit_mask word until you get a 1
 
         For example the bit mask, 0b1111_1100 has an offset of 2 (start counting at 0 from the right)
         """
@@ -49,11 +49,16 @@ class RegChunk:
         return shifted.bit_length()
 
 class RegMixin:
-    """Contains useful methods and properties for our custom grouping of register definitions"""
+    """
+    Contains useful methods and properties for the custom grouping of address 
+    that make up one register definition (based on ETROC2 Manual)
+    """
     
     @property
     def RegChunks(self) -> Tuple[RegChunk, ...]:
-        """Better name for the confusing name "value" """
+        """
+        Defines a better name for the confusing name "value" given by defualt by enum
+        """
         return self.value
 
     @property
@@ -73,11 +78,9 @@ class RegMixin:
     
     def split_value(self, value) -> list[int]:
         """
-        Since the values we care about are split across physical addresses. 
-        We need to split the incoming value based on the bitmasks.
+        Split the incoming value to be written based on the bitmasks
 
-        IMPORTANT: This assumes that the first register in register chunk corresponds to the first bits. 
-        Which seems like the case!
+        IMPORTANT: This assumes that the first register in register chunk corresponds to the first bits
         """
         split_values = []
         remaining = value
@@ -92,7 +95,7 @@ class RegMixin:
     def merge_values(self, values: list) -> int:
         """
         Inverse of split_value: take per-address masked values (ensure it is the same order as defined in the Enum) 
-        and reconstruct the composite integer.
+        and reconstruct the composite integer
         """
         if len(values) != len(self.RegChunks):
             raise ValueError("length mismatch")
@@ -111,9 +114,6 @@ class PixReg(RegMixin, Enum):
     """
     Information extracted from table 13 in ETROC2 documentaition (page 57)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
-
-    Note the registers are not actual registers in the ETROC. 
-    The register names are not very useful, so we grouped the names that are spread across registers as the registers we manipulate in software.
     """
     L1Adelay        = [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9, bit_mask = 0b1111_1111)]
     CLKEn_THCal     = [RegChunk(adr = 3,  bit_mask = 0b0000_1000)]
@@ -163,9 +163,6 @@ class PeriReg(RegMixin, Enum):
 
     Information extracted from table 15 in ETROC2 documentaition (page 61)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
-
-    Note the registers are not actual registers in the ETROC. 
-    The register names are not very useful, so we grouped the names that are spread across registers as the registers we manipulate in software.
     """
     VRefGen_PD            = [RegChunk(adr = 3,  bit_mask = 0b1000_0000)]
     PLL_ENABLEPLL         = [RegChunk(adr = 3,  bit_mask = 0b0100_0000)]
@@ -199,26 +196,10 @@ class PeriReg(RegMixin, Enum):
         RegChunk(adr = 25, bit_mask = 0b1111_1111),
     ]
 
-#### TESTING
-# l1a_reg = PixReg["L1Adelay"]
-# print(l1a_reg.total_bits, l1a_reg.addresses)
 
-# val = 0b1001_1000_1
-
-# print("GOAL", 0b1000_0000, 0b1001_1000)
-# values = l1a_reg.split_value(val)
-# for v in values:
-#     print(v, bin(v), hex(v))
-
-
-# for reg in l1a_reg.RegChunks:
-#     print(reg.adr, reg.address_name, reg.length, reg.offset, reg.bit_mask)
-
-
-# print(type(PeriReg.disScrambler))
-
-# print(isinstance(PeriReg.disLTx, PeriReg))
-
+# --------------------------------------------------------------
+# Testing Script (Optional)
+# --------------------------------------------------------------
 if __name__ == "__main__":
     def check(reg, value, expected):
         got = reg.split_value(value)
@@ -229,17 +210,14 @@ if __name__ == "__main__":
     check(PixReg.L1Adelay, 0b1,            [0b1000_0000, 0b0000_0000])
     check(PixReg.L1Adelay, 0b10,           [0b0000_0000, 0b0000_0001])
     check(PixReg.L1Adelay, 0b11,           [0b1000_0000, 0b0000_0001])
-    check(PixReg.L1Adelay, 0b1_0000_0000,  [0b0000_0000, 0b1000_0000])   # high bit goes to second chunk (since first takes only bit0 of composite)
-    check(PixReg.L1Adelay, 0b1_1111_1111,  [0b1000_0000, 0b1111_1111])   # max in-range (0x1FF)
-    # Value with overflow bits (only lower 9 bits should count)
-    # 0b10_1010_1010 & 0x1FF = 0b0_1010_1010; raw0=0 -> 0, raw1=0b0101_0101=0x55
+    check(PixReg.L1Adelay, 0b1_0000_0000,  [0b0000_0000, 0b1000_0000])   
+    check(PixReg.L1Adelay, 0b1_1111_1111,  [0b1000_0000, 0b1111_1111])  
     check(PixReg.L1Adelay, 0b10_1010_1010, [0b0000_0000, 0b0101_0101])
     print("L1A Delay Reg passed")
 
     # ---- Single-bit single-chunk register: CLKEn_THCal (mask 0b0000_1000, offset 3, length 1) ---- #
     check(PixReg.CLKEn_THCal, 0b0,  [0b0000_0000])
     check(PixReg.CLKEn_THCal, 0b1,  [0b0000_1000])
-    # Overflow bits beyond width (only lowest 1 bit kept)
     check(PixReg.CLKEn_THCal, 0b10, [0b0000_0000])
     check(PixReg.CLKEn_THCal, 0b11, [0b0000_1000])
     print("CLKEn_THCal Reg passed")
@@ -249,6 +227,14 @@ if __name__ == "__main__":
     check(PixReg.TH_offset, 0b000001,        [0b0000_0100])
     check(PixReg.TH_offset, 0b000010,        [0b0000_1000])
     check(PixReg.TH_offset, 0b000011,        [0b0000_1100])
-    check(PixReg.TH_offset, 0b111111,        [0b1111_1100])  # max in-range (0x3F)
+    check(PixReg.TH_offset, 0b111111,        [0b1111_1100])  
     check(PixReg.TH_offset, 0b1_1111_1111,   [0b1111_1100])
     print("Single-chunk register tests passed")
+
+
+
+
+
+
+
+    
