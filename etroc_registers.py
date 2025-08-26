@@ -1,7 +1,13 @@
 """
 Authors: Naomi Gonzalez and Hayden Swanson
 
-Outline script of ETROC registers
+!!!!!!!!!!!!!!!!!IMPORTANT!!!!!!!!!!!!!!!!! 
+~~~~~~~~~~~~~~~DO NOT CHANGE~~~~~~~~~~~~~~~
+This file defines ETROC2 registers in a useful way.
+In the ETROC useful values are saved across registers to save space.
+This groups these useful values into our own sw "registers" (in PixReg and PeriReg) by use of Enum classes, 
+and handles some of the logic with split values across addresses
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 """
 from dataclasses import dataclass
 from enum import Enum
@@ -9,18 +15,32 @@ from typing import Tuple
 
 @dataclass(frozen=True)
 class RegChunk:
+    """
+    Lets you select part of an actual ETROC2 physical register. 
+    These chunks of registers are what we group into more useful "registers"
+    """
     adr: int
     bit_mask: int
     is_status_reg: bool = False
 
     @property
     def offset(self) -> int:
+        """
+        Calculates the number of 0 bits in the bit_mask word until you get a 1.
+
+        For example the bit mask, 0b1111_1100 has an offset of 2 (start counting at 0 from the right)
+        """
         if self.bit_mask == 0:
             raise ValueError("mask=0")
         return (self.bit_mask & -self.bit_mask).bit_length() - 1   # index of lowest set bit
 
     @property
     def length(self) -> int:
+        """
+        Total length of the group of 1's in the bit_mask
+
+        For example, 0b1100_0000 has a length of 2.
+        """
         off = self.offset
         shifted = self.bit_mask >> off
         # Verify contiguity: shifted should be like 0b111... with no internal 0
@@ -29,29 +49,35 @@ class RegChunk:
         return shifted.bit_length()
 
 class RegMixin:
-    """Mixin for Enums"""
+    """Contains useful methods and properties for our custom grouping of register definitions"""
     
     @property
     def RegChunks(self) -> Tuple[RegChunk, ...]:
+        """Better name for the confusing name "value" """
         return self.value
 
     @property
     def total_bits(self) -> int:
+        """Adds up the lengths of the chunks"""
         return sum(c.length for c in self.RegChunks)
     
     @property
     def addresses(self) -> list[int]:
-        return sorted(set(c.adr for c in self.RegChunks))
+        """Grabs each address in each register chunk"""
+        return sorted(c.adr for c in self.RegChunks)
     
     @property
-    def is_status_reg(self):
+    def is_status_reg(self) -> bool:
+        """Returns True if all registers are status registers for each register chunk"""
         return all(reg.is_status_reg for reg in self.RegChunks)
     
     def split_value(self, value) -> list[int]:
         """
-        Splits value into chunks based on bit_masks and ordering of the register chunks (RegChunk)
+        Since the values we care about are split across physical addresses. 
+        We need to split the incoming value based on the bitmasks.
 
-        IMPORTANT: This assumes that the first register in register chunk corresponds to the first bits
+        IMPORTANT: This assumes that the first register in register chunk corresponds to the first bits. 
+        Which seems like the case!
         """
         split_values = []
         remaining = value
@@ -65,8 +91,8 @@ class RegMixin:
     
     def merge_values(self, values: list) -> int:
         """
-        Inverse of split_value: take per-address masked values (same order
-        as self.RegChunks) and reconstruct the composite integer (LSB-first).
+        Inverse of split_value: take per-address masked values (ensure it is the same order as defined in the Enum) 
+        and reconstruct the composite integer.
         """
         if len(values) != len(self.RegChunks):
             raise ValueError("length mismatch")
@@ -173,10 +199,6 @@ class PeriReg(RegMixin, Enum):
         RegChunk(adr = 25, bit_mask = 0b1111_1111),
     ]
 
-
-
-
-
 #### TESTING
 # l1a_reg = PixReg["L1Adelay"]
 # print(l1a_reg.total_bits, l1a_reg.addresses)
@@ -196,3 +218,37 @@ class PeriReg(RegMixin, Enum):
 # print(type(PeriReg.disScrambler))
 
 # print(isinstance(PeriReg.disLTx, PeriReg))
+
+if __name__ == "__main__":
+    def check(reg, value, expected):
+        got = reg.split_value(value)
+        assert got == expected, f"{reg.name} value {bin(value)} expected {list(map(bin, expected))} got {list(map(bin, got))}"
+
+    # ---- PixReg.L1Adelay ---- #
+    check(PixReg.L1Adelay, 0b0,            [0b0000_0000, 0b0000_0000])
+    check(PixReg.L1Adelay, 0b1,            [0b1000_0000, 0b0000_0000])
+    check(PixReg.L1Adelay, 0b10,           [0b0000_0000, 0b0000_0001])
+    check(PixReg.L1Adelay, 0b11,           [0b1000_0000, 0b0000_0001])
+    check(PixReg.L1Adelay, 0b1_0000_0000,  [0b0000_0000, 0b1000_0000])   # high bit goes to second chunk (since first takes only bit0 of composite)
+    check(PixReg.L1Adelay, 0b1_1111_1111,  [0b1000_0000, 0b1111_1111])   # max in-range (0x1FF)
+    # Value with overflow bits (only lower 9 bits should count)
+    # 0b10_1010_1010 & 0x1FF = 0b0_1010_1010; raw0=0 -> 0, raw1=0b0101_0101=0x55
+    check(PixReg.L1Adelay, 0b10_1010_1010, [0b0000_0000, 0b0101_0101])
+    print("L1A Delay Reg passed")
+
+    # ---- Single-bit single-chunk register: CLKEn_THCal (mask 0b0000_1000, offset 3, length 1) ---- #
+    check(PixReg.CLKEn_THCal, 0b0,  [0b0000_0000])
+    check(PixReg.CLKEn_THCal, 0b1,  [0b0000_1000])
+    # Overflow bits beyond width (only lowest 1 bit kept)
+    check(PixReg.CLKEn_THCal, 0b10, [0b0000_0000])
+    check(PixReg.CLKEn_THCal, 0b11, [0b0000_1000])
+    print("CLKEn_THCal Reg passed")
+
+    # ---- Multi-bit single-chunk register: TH_offset (mask 0b1111_1100, offset 2, length 6) ---- #
+    check(PixReg.TH_offset, 0b000000,        [0b0000_0000])
+    check(PixReg.TH_offset, 0b000001,        [0b0000_0100])
+    check(PixReg.TH_offset, 0b000010,        [0b0000_1000])
+    check(PixReg.TH_offset, 0b000011,        [0b0000_1100])
+    check(PixReg.TH_offset, 0b111111,        [0b1111_1100])  # max in-range (0x3F)
+    check(PixReg.TH_offset, 0b1_1111_1111,   [0b1111_1100])
+    print("Single-chunk register tests passed")
