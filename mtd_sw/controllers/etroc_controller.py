@@ -9,7 +9,7 @@ Analog signal from sensors to digital signal.
 from .lpgbt_controller import lpgbt_chip
 from ..utils.Configure_from_DB import etl_asic_config_from_db
 from dataclasses import dataclass
-from .etroc_registers import PeriReg, PixReg
+from .etroc_registers import PeriReg, PixReg, validate_is_pixel
 import time
 from functools import partial
 from collections.abc import Callable
@@ -20,65 +20,24 @@ from collections import UserList
 class Pixel:
     row: int 
     col: int
-    i2c_read: Callable
-    i2c_write: Callable
+    etroc: etroc_chip
 
-    def __init__(self, i2c_read: Callable, i2c_write: Callable, row: int, col: int):
+    def __init__(self, etroc: etroc_chip, row: int, col: int):
         self.row = row
         self.col = col
-        self.i2c_read = i2c_read
-        self.i2c_write = i2c_write
+        self.etroc = etroc
 
-
-    def write(self, register: int | str | PixReg, value: int):
-        """
-        Write to ETROC pixel register through I2C Bus
-
-        register: ETROC pixel register name(str) or pixel register number(int)
-        value: value to write to a specific ETROC pixel register
-        """
-        if isinstance(register, int):
-            reg = self.full_address(adr=register)
-            self.i2c_write(reg_address=reg, data=value)
-            return
-        elif isinstance(register, str):
-            reg = PixReg[register]
-        elif isinstance(register, PixReg):
-            reg = register
-        else:
-            raise TypeError(f"Unsupported type for register {type(register)}")
-
-        for adr, val in zip(reg.addresses, reg.split_value(value)):
-            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
-            print(f"Pixel Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}") 
-            self.i2c_write(reg_address=full_addr, data=val)
-        print("================\n")
-
-    def read(self, register: int | str) -> int:
+    def write(self, register:str|PixReg|PeriReg, value: int):
+        self.etroc.write(register, value, row=self.row, col=self.col)
+        
+    def read(self, register:str|PixReg|PeriReg) -> int:
         """
         Reads from ETROC pixel register through I2C Bus
 
         register: ETROC pixel register name(str) or pixel register number(int)
         """
-        if isinstance(register, int):
-            reg =  self.full_address(adr=register)
-            return self.i2c_read(reg_address=reg)
-        elif isinstance(register, str):
-            reg = PixReg[register]
-        elif isinstance(register, PixReg):
-            reg = register
-        else:
-            raise TypeError(f"Unsupported type for register {type(register)}")
-
-        values = []
-        for adr in reg.addresses:
-            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)            
-            values.append(self.i2c_read(reg_address = full_addr)[0])
-            print(f"Pixel Read: {adr=}, {full_addr=}, {values=}")
-        print("=============\n")
-        return reg.merge_values(values)
+        return self.etroc.read(register)
     
-
     def auto_threshold_scan(self, timeout = 5):
         
         self.write(PixReg.CLKEn_THCal, 1)
@@ -118,59 +77,21 @@ class Pixel:
 
         return baseline, noise_width
 
-    def full_address(self, adr: int, 
-                    broadcast:bool = False, 
-                    is_status_reg:bool = False):
-        """
-        Construct a full ETROC register address by encoding address components into bit fields
-        
-        Address for in=pixel I2C access (see table 10 on page 48 of ETROC2 manual):
-        - Bits 0-4:   In pixel register address
-        - Bits 5-8:   Row address (0-15)
-        - Bits 9-12:  Column address (0-15) 
-        - Bit 13:     0: direct message to a specific pixel, 1: brodcast to all pixels
-        - Bit 14:     1: status, 0: configuration
-        - Bit 15:     1: pixel matrix, 0: periphery
-        
-
-        adr: Base register address (0-31)
-        row: Pixel row coordinate (0-15, default: 0)
-        col: Pixel column coordinate (0-15, default: 0)
-        broadcast: Enable broadcast mode to all pixels (default: False)
-        is_status_reg: Address targets a status register (default: False)
-        is_pixel_reg: Address targets a pixel register (default: False)
-
-        Returns -> Complete 16-bit encoded address for ETROC register access
-        """
-        is_pixel_reg = True
-        return adr | self.row << 5 | self.col << 9 | broadcast << 13 | is_status_reg <<14 | is_pixel_reg << 15
-
-
 @dataclass
 class PixMatrix(UserList):
+    """
+    This classed is used for an alternative api for broadcasting. For example:
+
+    etroc = etroc_chip(...)
+    etroc.pixels.write("your_reg")
+    """
     def __init__(self, pixels):
         self.pixels = pixels
         super().__init__(pixels)
 
-    def write(self, register: int | str | PixReg, value:int):
-        _pix = self.pixels[0][0]
-        if isinstance(register, int):
-            reg = _pix.full_address(adr=register, broadcast=True)
-            _pix.i2c_write(reg_address=reg, data=value)
-            return
-        elif isinstance(register, str):
-            reg = PixReg[register]
-        elif isinstance(register, PixReg):
-            reg = register
-        else:
-            raise TypeError(f"Unsupported type for register {type(register)}")
-
-        for adr, val in zip(reg.addresses, reg.split_value(value)):
-            full_addr = _pix.full_address(adr, is_status_reg=reg.is_status_reg, broadcast=True)            
-            _pix.i2c_write(reg_address = full_addr, data = val)
-
-            print(f"Pixel Broadcast  Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}")
-        print("============\n")
+    def write(self, register:str|PixReg|PeriReg, value:int) -> None:
+        etroc = self.pixels[0][0].etroc
+        etroc.write(register, value, broadcast=True)
 
 # ---------------------------------------------------------------
 # Main ETROC Chip Class
@@ -180,7 +101,7 @@ class etroc_chip:
     lpgbt: lpgbt_chip
     connected: bool
     vref: bool
-    pixels: list[list[Pixel]]
+    pixels: PixMatrix[list[Pixel]]
 
 
     def __init__(self, lpgbt: lpgbt_chip, address_i2c: int):
@@ -293,16 +214,14 @@ class etroc_chip:
 
         self.reset()
 
-
     # TODO: change this to set/getter
     def power_Vref(self, val: bool):
         """
         Power up/down internal VREF on ETROC
         """
-        self.write("VRefGen_PD", val)
+        self.write("VRefGen_PD", val)    
 
-
-    def write(self, register: int | str | PeriReg, value: int):
+    def write(self, register: str|PeriReg|PixReg, value:int, row:int=None, col:int=None, broadcast:bool=False):
         """
         Write to ETROC register through lpGBT I2C Bus
 
@@ -310,22 +229,18 @@ class etroc_chip:
         value: value to write to a specific ETROC register
         """
         if isinstance(register, int):
-            self.i2c_write(reg_address=register, data=value)
-            return
-        elif isinstance(register, str):
-            reg = PeriReg[register]
-        elif isinstance(register, PeriReg):
-            reg = register
-        else:
-            raise TypeError(f"Unsupported type for register {type(register)}")
+            raise TypeError("You attempted to pass an integer for the register in write. If you want to write to a specific address please use the i2c_write and i2c_read methods of this class.")
 
-        for adr, val in zip(reg.addresses, reg.split_value(value)):
-            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
-            self.i2c_write(reg_address=full_addr, data=val)
-            print(f"Peri Write: {adr=}, {full_addr=}, split_val={val}, whole_val={value}")
-        print("=======================\n")
+        is_pixel = validate_is_pixel(row, col)
+        
+        if isinstance(register, str):
+            register = PixReg[register] if is_pixel else PeriReg[register]
 
-    def read(self, register: int | str) -> int:
+        full_addresses = register.full_addresses(row=row, col=col, broadcast=broadcast)
+        for adr, val in zip(full_addresses, register.split_value(value)):
+            self.i2c_write(reg_address=adr, data=val)
+
+    def read(self, register: str|PeriReg|PixReg, row:int=None, col:int=None) -> int:
         """
         Reads from ETROC register through lpGBT I2C Bus
 
@@ -333,22 +248,17 @@ class etroc_chip:
         """
 
         if isinstance(register, int):
-            return self.i2c_read(reg_address=register)
-        elif isinstance(register, str):
-            reg = PeriReg[register]
-        elif isinstance(register, PeriReg):
-            reg = register
-        else:
-            raise TypeError(f"Unsupported type for register {type(register)}")
-    
-        values = []
-        for adr in reg.addresses:
-            full_addr = self.full_address(adr, is_status_reg=reg.is_status_reg)
-            values.append(self.i2c_read(reg_address=full_addr)[0])
-            print(f"Peri Read: {adr=}, {full_addr=}, values={values}")
-        print("===============\n")
-        return reg.merge_values(values)
+            raise TypeError("You attempted to pass an integer for the register in write. If you want to write to a specific address please use the i2c_write and i2c_read methods of this class.")
 
+        is_pixel = validate_is_pixel(row, col)
+        
+        if isinstance(register, str):
+            register = PixReg[register] if is_pixel else PeriReg[register]
+        
+        values = []
+        for adr in register.full_addresses(row=row, col=col):
+            values += self.i2c_read(reg_address=adr)
+        return register.merge_values(values)
 
     def run_threshold_scan(self):
         """
@@ -376,29 +286,3 @@ class etroc_chip:
         self.write(PixReg.enable_TDC, 1)
 
         return baselines, noisewidths
-
-    def full_address(self, adr: int, is_status_reg: bool = False) -> int:
-        """
-        Construct a full ETROC periphery register address based on table 11 in ETROC2 Manual.
-        
-        Periphery addressing scheme:
-        - Configuration: 0x0000 - 0x001F (addresses 0-31)
-        - Status:        0x0100 - 0x010F (addresses 0-15 with status flag)
-        - SEU Counter:   0x0120 - 0x0123 (addresses 32-35 with status flag)
-        - Magic number:  0x0020 (address 32 configuration)
-        
-        The address format uses:
-        - Bits 0-7:   Base register address
-        - Bit 8:      Status register flag (1 for status, 0 for configuration)
-        - Bits 9-15:  Reserved (0)
-        
-        adr: Base register address 
-        is_status_reg: True for status registers, False for configuration
-        
-        Returns -> Complete 16-bit encoded address for ETROC periphery register access
-        """
-        if is_status_reg:
-            return 0x0100 | adr
-        else:
-            return adr
-

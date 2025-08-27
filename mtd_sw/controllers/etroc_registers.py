@@ -14,6 +14,23 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
+def validate_is_pixel(row: int = None, col: int = None) -> bool:
+    """
+    Checks if it is a pixel.
+    """
+    if row is None and col is None:
+        is_pixel = False
+    elif row is not None and col is not None:
+        is_pixel = True
+    else:
+        # Exactly one supplied
+        raise ValueError("row and col must both be provided together (or both omitted)")
+    
+    if is_pixel:
+        if not row in range(16) or not col in range(16):
+            raise ValueError(f"Row and Col should be between 0..15, you gave: {row=}, {col=}")
+    return is_pixel
+
 @dataclass(frozen=True)
 class RegChunk:
     """
@@ -47,6 +64,24 @@ class RegChunk:
         if shifted & (shifted + 1):
             raise ValueError(f"mask 0x{self.bit_mask:X} not contiguous")
         return shifted.bit_length()
+    
+    def calc_full_address(self, row: int = None, col: int = None, broadcast: bool = False) -> int:
+        ## Check if it is for pixel
+        is_pixel = validate_is_pixel(row=row, col=col)
+        # # # # PIXEL ADDRESS # # # # 
+        if is_pixel:
+            return self.adr \
+                    | row << 5 \
+                    | col << 9 \
+                    | broadcast << 13 \
+                    | self.is_status_reg <<14 \
+                    | is_pixel << 15
+        
+        # # # # PERIPHERY ADDRESS # # # #
+        # Construct a full ETROC periphery register address based on table 11 in ETROC2 Manual.
+        if self.is_status_reg:
+            return self.adr | 0x100
+        return self.adr
 
 class RegMixin:
     """
@@ -67,9 +102,12 @@ class RegMixin:
         return sum(c.length for c in self.RegChunks)
     
     @property
-    def addresses(self) -> list[int]:
-        """Grabs each address in each register chunk"""
-        return sorted(c.adr for c in self.RegChunks)
+    def local_addresses(self) -> list[int]:
+        return [r.adr for r in self.RegChunks]
+    
+    def full_addresses(self, row:int = None, col:int = None, broadcast:bool = False) -> list[int]:
+        return [
+            r.calc_full_address(row=row, col=col, broadcast=broadcast) for r in self.RegChunks]
     
     @property
     def is_status_reg(self) -> bool:
@@ -236,3 +274,5 @@ if __name__ == "__main__":
     print("Single-chunk register tests passed")
 
 
+
+    print(PixReg[PixReg.BufEn_THCal])
