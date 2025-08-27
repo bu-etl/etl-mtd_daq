@@ -166,6 +166,11 @@ class etroc_chip:
             time.sleep(0.05)
             self.write("asyResetGlobalReadout", 1)
 
+    def reset_fast_command(self):
+        self.write(PeriReg.asyResetFastcommand,0)
+        time.sleep(0.1)
+        self.write(PeriReg.asyResetFastcommand,1)
+
     @property
     def vref(self):
         """
@@ -224,6 +229,7 @@ class etroc_chip:
         self.pixels.write(PixReg.lowerCalTrig, 0)
 
         self.reset()
+        self.reset_fast_command()
    
 
     def write(self, register: str|PeriReg|PixReg, value:int, row:int|None=None, col:int|None=None, broadcast:bool=False):
