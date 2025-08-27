@@ -20,9 +20,8 @@ from collections import UserList
 class Pixel:
     row: int 
     col: int
-    etroc: etroc_chip
 
-    def __init__(self, etroc: etroc_chip, row: int, col: int):
+    def __init__(self, etroc, row: int, col: int):
         self.row = row
         self.col = col
         self.etroc = etroc
@@ -64,8 +63,8 @@ class Pixel:
                 timed_out = True
                 break
 
-        noise_width = self.read("NW")
-        baseline = self.read("BL")
+        noise_width = self.read(PixReg.NW)
+        baseline = self.read(PixReg.BL)
         self.write(PixReg.Bypass_THCal, 1)
         # self.write('DAC', min(baseline+noise_width, 1023))
 
@@ -149,7 +148,7 @@ class etroc_chip:
         Check ETROC connectivity through reading first reg and verifying
         value is 0x2c
         """
-        test = self.i2c_read(0x0)
+        test = self.i2c_read(reg_address=0x0)
         return True if test==[0x2c] else False
 
 
@@ -250,7 +249,7 @@ class etroc_chip:
         full_addresses = register.full_addresses(row=row, col=col, broadcast=broadcast)
         for adr, val in zip(full_addresses, register.split_value(value)):
             self.i2c_write(reg_address=adr, data=val)
-
+            print(f"Writing: reg={register.name} full_addr={adr}, split_val={val}, whole_val={value}")
     def read(self, register: str|PeriReg|PixReg, row:int|None=None, col:int|None=None) -> int:
         """
         Reads from ETROC register through lpGBT I2C Bus
