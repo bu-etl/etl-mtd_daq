@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
-def validate_is_pixel(row: int = None, col: int = None) -> bool:
+def validate_is_pixel(row: int | None = None, col: int | None = None) -> bool:
     """
     Checks if it is a pixel.
     """
@@ -65,7 +65,7 @@ class RegChunk:
             raise ValueError(f"mask 0x{self.bit_mask:X} not contiguous")
         return shifted.bit_length()
     
-    def calc_full_address(self, row: int = None, col: int = None, broadcast: bool = False) -> int:
+    def calc_full_address(self, row: int | None = None, col: int | None = None, broadcast: bool = False) -> int:
         ## Check if it is for pixel
         is_pixel = validate_is_pixel(row=row, col=col)
         # # # # PIXEL ADDRESS # # # # 
@@ -105,7 +105,7 @@ class RegMixin:
     def local_addresses(self) -> list[int]:
         return [r.adr for r in self.RegChunks]
     
-    def full_addresses(self, row:int = None, col:int = None, broadcast:bool = False) -> list[int]:
+    def full_addresses(self, row:int | None = None, col:int | None = None, broadcast:bool = False) -> list[int]:
         return [
             r.calc_full_address(row=row, col=col, broadcast=broadcast) for r in self.RegChunks]
     
@@ -275,4 +275,3 @@ if __name__ == "__main__":
 
 
 
-    print(PixReg[PixReg.BufEn_THCal])

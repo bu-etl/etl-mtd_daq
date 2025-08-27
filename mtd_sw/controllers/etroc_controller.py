@@ -77,7 +77,7 @@ class Pixel:
 
         return baseline, noise_width
 
-@dataclass
+
 class PixMatrix(UserList):
     """
     This classed is used for an alternative api for broadcasting. For example:
@@ -99,8 +99,8 @@ class PixMatrix(UserList):
 class etroc_chip:
     addr_i2c: int
     lpgbt: lpgbt_chip
-    connected: bool
-    vref: bool
+    _connected: bool
+    _vref: bool
     pixels: PixMatrix[list[Pixel]]
 
 
@@ -109,6 +109,7 @@ class etroc_chip:
         Checks connectivity then writes initial configuration of ETROC 
         """
         self.lpgbt = lpgbt
+        self._connected = False
         self. addr_i2c = address_i2c
         self.i2c_write = partial(
             self.lpgbt.i2c_master_write,
@@ -128,34 +129,28 @@ class etroc_chip:
         )
         
         print("Connecting...")
-
-        self.is_connected()
         print("ETROC Connection status:", self.connected)
 
         self.pixels = PixMatrix([
-            [Pixel(self.i2c_read, self.i2c_write, row, col) for col in range(16)] for row in range(16)])
+            [Pixel(self, row, col) for col in range(16)] for row in range(16)])
         
         self.DAC_min = 600 #mV
         self.DAC_max = 1000 #mV
         self.DAC_step = 400/2**10
+        self._vref = False
 
         self.reset(hard = True)
-        self.power_Vref(True) 
         self.config()
 
 
-    # TODO: change this to set/getter
-    def is_connected(self):
+    @property
+    def connected(self):
         """
         Check ETROC connectivity through reading first reg and verifying
         value is 0x2c
         """
-        try:
-            test = self.read(0x0)
-            self.connected = True if test==[0x2c] else False
-        except TimeoutError:
-            self.connected = False
-        return self.connected
+        test = self.i2c_read(0x0)
+        return True if test==[0x2c] else False
 
 
     def reset(self, hard=False):
@@ -170,6 +165,21 @@ class etroc_chip:
             self.write("asyResetGlobalReadout", 0)
             time.sleep(0.05)
             self.write("asyResetGlobalReadout", 1)
+
+    @property
+    def vref(self):
+        """
+        ETROC internal VREF getter 
+        """
+        return self._vref
+
+    @vref.setter
+    def vref(self, val: bool):
+        """
+        Power up/down internal VREF on ETROC
+        """
+        self.write(PeriReg.VRefGen_PD, val) 
+        self._vref = val
 
 
     def config(self):
@@ -192,9 +202,11 @@ class etroc_chip:
         # -> values from Tamalero ETROC.py
         self.write(PeriReg.onChipL1AConf, 0) 
         self.write(PeriReg.PLL_ENABLEPLL, 1)
-        
-        ## Pixel Configurations
+        self.write(PeriReg.chargeInjectionDelay, 0xa)
         self.pixels.write(PixReg.L1Adelay, 0x01f5)
+        self.pixels.write(PixReg.disTrigPath, 1)
+        self.pixels.write(PixReg.QInjEn, 0)
+
         # opening TOA / TOT / Cal windows
         self.pixels.write(PixReg.upperTOA, 0x3ff)
         self.pixels.write(PixReg.lowerTOA, 0)
@@ -204,7 +216,6 @@ class etroc_chip:
         self.pixels.write(PixReg.lowerCal, 0)
 
         # Configuring the trigger stream
-        self.pixels.write(PixReg.disTrigPath,  1)
         self.pixels.write(PixReg.upperTOATrig, 0x3ff)
         self.pixels.write(PixReg.lowerTOATrig, 0)
         self.pixels.write(PixReg.upperTOTTrig, 0x1ff)
@@ -213,15 +224,9 @@ class etroc_chip:
         self.pixels.write(PixReg.lowerCalTrig, 0)
 
         self.reset()
+   
 
-    # TODO: change this to set/getter
-    def power_Vref(self, val: bool):
-        """
-        Power up/down internal VREF on ETROC
-        """
-        self.write("VRefGen_PD", val)    
-
-    def write(self, register: str|PeriReg|PixReg, value:int, row:int=None, col:int=None, broadcast:bool=False):
+    def write(self, register: str|PeriReg|PixReg, value:int, row:int|None=None, col:int|None=None, broadcast:bool=False):
         """
         Write to ETROC register through lpGBT I2C Bus
 
@@ -240,7 +245,7 @@ class etroc_chip:
         for adr, val in zip(full_addresses, register.split_value(value)):
             self.i2c_write(reg_address=adr, data=val)
 
-    def read(self, register: str|PeriReg|PixReg, row:int=None, col:int=None) -> int:
+    def read(self, register: str|PeriReg|PixReg, row:int|None=None, col:int|None=None) -> int:
         """
         Reads from ETROC register through lpGBT I2C Bus
 
@@ -281,8 +286,8 @@ class etroc_chip:
                 baselines[row][col], noisewidths[row][col] = bl, nw
                 print(bl, nw)
 
-        self.write(PixReg.disDataReadout, 0)
-        self.write(PixReg.disTrigPath, 0)
-        self.write(PixReg.enable_TDC, 1)
+        self.pixels.write(PixReg.disDataReadout, 0)
+        self.pixels.write(PixReg.disTrigPath, 0)
+        self.pixels.write(PixReg.enable_TDC, 1)
 
         return baselines, noisewidths
