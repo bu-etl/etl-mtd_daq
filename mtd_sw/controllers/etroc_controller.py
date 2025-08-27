@@ -247,9 +247,13 @@ class etroc_chip:
             register = PixReg[register] if is_pixel else PeriReg[register]
 
         full_addresses = register.full_addresses(row=row, col=col, broadcast=broadcast)
-        for adr, val in zip(full_addresses, register.split_value(value)):
-            self.i2c_write(reg_address=adr, data=val)
-            print(f"Writing: reg={register.name} full_addr={adr}, split_val={val}, whole_val={value}")
+        for adr, val, bit_mask in zip(full_addresses, register.split_value(value), register.bit_masks):
+            #   You need to get the current register contents and only change the bits 
+            # for that physical ETROC register chunk otherwise you rewrite the entire contents of the register!
+            data = val | (self.read(adr) | ~bit_mask)
+            self.i2c_write(reg_address=adr, data=data)
+            print(f"Writing: reg={register.name} full_addr={adr}, split_val={data}, whole_val={value}")
+
     def read(self, register: str|PeriReg|PixReg, row:int|None=None, col:int|None=None) -> int:
         """
         Reads from ETROC register through lpGBT I2C Bus

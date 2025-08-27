@@ -110,6 +110,10 @@ class RegMixin:
             r.calc_full_address(row=row, col=col, broadcast=broadcast) for r in self.RegChunks]
     
     @property
+    def bit_masks(self) -> list[int]:
+        return [r.bit_mask for r in self.RegChunks]
+
+    @property
     def is_status_reg(self) -> bool:
         """Returns True if all registers are status registers for each register chunk"""
         return all(reg.is_status_reg for reg in self.RegChunks)
