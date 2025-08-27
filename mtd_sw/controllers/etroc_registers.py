@@ -276,5 +276,82 @@ if __name__ == "__main__":
     check(PixReg.TH_offset, 0b111111,        [0b1111_1100])  
     check(PixReg.TH_offset, 0b1_1111_1111,   [0b1111_1100])
     print("Single-chunk register tests passed")
+    
+    # -------------------------------- #
+    # ---- TESTING MERGE FUNCTION ---- #
+    # -------------------------------- #
+
+    def check_merge(reg, masked_values, expected_composite):
+        got = reg.merge_values(masked_values)
+        assert got == expected_composite, f"{reg.name} merge_values({list(map(bin, masked_values))}) expected {bin(expected_composite)} got {bin(got)}"
+
+    print("\n--- Testing merge_values method ---")
+    
+    # ---- Multi-chunk register: L1Adelay ---- #
+    # L1Adelay has two chunks: [RegChunk(adr=8, bit_mask=0b1000_0000), RegChunk(adr=9, bit_mask=0b1111_1111)]
+    check_merge(PixReg.L1Adelay, [0b0000_0000, 0b0000_0000], 0b0_0000_0000)  # All zeros
+    check_merge(PixReg.L1Adelay, [0b1000_0000, 0b0000_0000], 0b0_0000_0001)  # First bit set
+    check_merge(PixReg.L1Adelay, [0b0000_0000, 0b0000_0001], 0b0_0000_0010)  # Second chunk LSB set
+    check_merge(PixReg.L1Adelay, [0b1000_0000, 0b0000_0001], 0b0_0000_0011)  # Both first bit and second chunk LSB set
+    check_merge(PixReg.L1Adelay, [0b0000_0000, 0b1111_1111], 0b1_1111_1110)  # Second chunk all bits set
+    check_merge(PixReg.L1Adelay, [0b1000_0000, 0b1111_1111], 0b1_1111_1111)  # All bits set
+    check_merge(PixReg.L1Adelay, [0b0000_0000, 0b1010_1010], 0b1_0101_0100)  # Alternating pattern in second chunk
+    check_merge(PixReg.L1Adelay, [0b1000_0000, 0b1010_1010], 0b1_0101_0101)  # First bit + alternating pattern
+    print("L1Adelay merge_values tests passed")
+
+    # ---- Single-chunk register: CLKEn_THCal ---- #
+    # CLKEn_THCal has one chunk: [RegChunk(adr=3, bit_mask=0b0000_1000)]
+    check_merge(PixReg.CLKEn_THCal, [0b0000_0000], 0b0)  # Zero
+    check_merge(PixReg.CLKEn_THCal, [0b0000_1000], 0b1)  # Bit set at correct position
+    check_merge(PixReg.CLKEn_THCal, [0b1111_1111], 0b1)  # All bits set (only masked bit matters)
+    print("CLKEn_THCal merge_values tests passed")
+
+    # ---- Single-chunk multi-bit register: TH_offset ---- #
+    # TH_offset has one chunk: [RegChunk(adr=5, bit_mask=0b1111_1100)]
+    check_merge(PixReg.TH_offset, [0b0000_0000], 0b000000)  # All zeros
+    check_merge(PixReg.TH_offset, [0b0000_0100], 0b000001)  # LSB of field set
+    check_merge(PixReg.TH_offset, [0b0000_1000], 0b000010)  # Second bit of field set
+    check_merge(PixReg.TH_offset, [0b0000_1100], 0b000011)  # Two LSBs of field set
+    check_merge(PixReg.TH_offset, [0b1111_1100], 0b111111)  # All field bits set
+    check_merge(PixReg.TH_offset, [0b1010_1000], 0b101010)  # Alternating pattern
+    check_merge(PixReg.TH_offset, [0b0101_0100], 0b010101)  # Inverse alternating pattern
+    print("TH_offset merge_values tests passed")
+
+    # ---- Multi-chunk register: DAC ---- #
+    # DAC has two chunks: [RegChunk(adr=4, bit_mask=0b1111_1111), RegChunk(adr=5, bit_mask=0b0000_0011)]
+    check_merge(PixReg.DAC, [0b0000_0000, 0b0000_0000], 0b00_0000_0000)  # All zeros
+    check_merge(PixReg.DAC, [0b0000_0001, 0b0000_0000], 0b00_0000_0001)  # First chunk LSB set
+    check_merge(PixReg.DAC, [0b0000_0000, 0b0000_0001], 0b01_0000_0000)  # Second chunk LSB set
+    check_merge(PixReg.DAC, [0b0000_0001, 0b0000_0001], 0b01_0000_0001)  # Both LSBs set
+    check_merge(PixReg.DAC, [0b1111_1111, 0b0000_0000], 0b00_1111_1111)  # First chunk all bits set
+    check_merge(PixReg.DAC, [0b0000_0000, 0b0000_0011], 0b11_0000_0000)  # Second chunk all bits set
+    check_merge(PixReg.DAC, [0b1111_1111, 0b0000_0011], 0b11_1111_1111)  # All bits set
+    check_merge(PixReg.DAC, [0b1010_1010, 0b0000_0010], 0b10_1010_1010)  # Mixed pattern
+    print("DAC merge_values tests passed")
+
+    # ---- Complex multi-chunk register: upperCal ---- #
+    # upperCal has two chunks: [RegChunk(adr=11, bit_mask=0b1111_1100), RegChunk(adr=12, bit_mask=0b0000_1111)]
+    check_merge(PixReg.upperCal, [0b0000_0000, 0b0000_0000], 0b0000_000000)  # All zeros
+    check_merge(PixReg.upperCal, [0b0000_0100, 0b0000_0000], 0b0000_000001)  # First chunk LSB set
+    check_merge(PixReg.upperCal, [0b0000_0000, 0b0000_0001], 0b0001_000000)  # Second chunk LSB set
+    check_merge(PixReg.upperCal, [0b0000_0100, 0b0000_0001], 0b0001_000001)  # Both LSBs set
+    check_merge(PixReg.upperCal, [0b1111_1100, 0b0000_0000], 0b0000_111111)  # First chunk all bits set
+    check_merge(PixReg.upperCal, [0b0000_0000, 0b0000_1111], 0b1111_000000)  # Second chunk all bits set
+    check_merge(PixReg.upperCal, [0b1111_1100, 0b0000_1111], 0b1111_111111)  # All bits set
+    check_merge(PixReg.upperCal, [0b1010_1000, 0b0000_0101], 0b0101_101010)  # Alternating patterns
+    print("upperCal merge_values tests passed")
+
+    # ---- Four-chunk register: eFuse_Prog ---- #
+    # eFuse_Prog has four chunks, each with mask 0b1111_1111 (offset=0, length=8)
+    check_merge(PeriReg.eFuse_Prog, [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000], 0b0000_0000_0000_0000_0000_0000_0000_0000)
+    check_merge(PeriReg.eFuse_Prog, [0b0000_0001, 0b0000_0000, 0b0000_0000, 0b0000_0000], 0b0000_0000_0000_0000_0000_0000_0000_0001)
+    check_merge(PeriReg.eFuse_Prog, [0b0000_0000, 0b0000_0001, 0b0000_0000, 0b0000_0000], 0b0000_0000_0000_0000_0000_0001_0000_0000)
+    check_merge(PeriReg.eFuse_Prog, [0b0000_0000, 0b0000_0000, 0b0000_0001, 0b0000_0000], 0b0000_0000_0000_0001_0000_0000_0000_0000)
+    check_merge(PeriReg.eFuse_Prog, [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0001], 0b0000_0001_0000_0000_0000_0000_0000_0000)
+    check_merge(PeriReg.eFuse_Prog, [0b1111_1111, 0b1111_1111, 0b1111_1111, 0b1111_1111], 0b1111_1111_1111_1111_1111_1111_1111_1111)
+    check_merge(PeriReg.eFuse_Prog, [0b1010_1010, 0b0101_0101, 0b1100_1100, 0b0011_0011], 0b0011_0011_1100_1100_0101_0101_1010_1010)
+    print("eFuse_Prog merge_values tests passed")
+
+    print("\n--- All merge_values tests passed! ---")
 
 
