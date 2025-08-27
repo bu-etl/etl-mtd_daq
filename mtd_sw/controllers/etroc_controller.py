@@ -250,7 +250,8 @@ class etroc_chip:
         for adr, val, bit_mask in zip(full_addresses, register.split_value(value), register.bit_masks):
             #   You need to get the current register contents and only change the bits 
             # for that physical ETROC register chunk otherwise you rewrite the entire contents of the register!
-            data = val | (self.read(adr) | ~bit_mask)
+            register_contents = self.i2c_read(reg_address=adr)[0]
+            data = (register_contents | ~bit_mask) | val
             self.i2c_write(reg_address=adr, data=data)
             print(f"Writing: reg={register.name} full_addr={adr}, split_val={data}, whole_val={value}")
 
