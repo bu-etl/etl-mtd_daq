@@ -2,7 +2,7 @@
 Authors: Naomi Gonzalez and Hayden Swanson
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-~~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 Description:
@@ -272,6 +272,5 @@ if __name__ == "__main__":
     check(PixReg.TH_offset, 0b111111,        [0b1111_1100])  
     check(PixReg.TH_offset, 0b1_1111_1111,   [0b1111_1100])
     print("Single-chunk register tests passed")
-
 
 
