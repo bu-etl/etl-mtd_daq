@@ -69,7 +69,10 @@ class RegChunk:
         ## Check if it is for pixel
         is_pixel = validate_is_pixel(row=row, col=col)
         # # # # PIXEL ADDRESS # # # # 
-        if is_pixel:
+        if is_pixel or broadcast:
+            # these two lines handle the case where you broadcast (no row and col are given)
+            row = row if is_pixel else 0
+            col = col if is_pixel else 0
             return self.adr \
                     | row << 5 \
                     | col << 9 \
