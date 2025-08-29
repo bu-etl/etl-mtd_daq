@@ -38,22 +38,27 @@ class Pixel:
         return self.etroc.read(register)
     
     def auto_threshold_scan(self, timeout = 5):
-        
+        print("Checking Scan done", self.read(PixReg.ScanDone))
         self.write(PixReg.CLKEn_THCal, 1)
         self.write(PixReg.Bypass_THCal, 0)
         self.write(PixReg.BufEn_THCal, 1)
         self.write(PixReg.RSTn_THCal, 0) # Check with Murtaza: Needed?
         self.write(PixReg.RSTn_THCal, 1) # Check with Murtaza: Needed?
         self.write(PixReg.ScanStart_THCal, 1)
+        print("Scan Done check 2", self.read(PixReg.ScanDone))
         self.write(PixReg.ScanStart_THCal, 0)
         
         done = False
         start_time = time.time()
         timed_out = False
+        c = 0
         while not done:
             done = True
             try:
+                print("trying scan", c)
+                c+=1
                 done = self.read(PixReg.ScanDone)
+                print("scandone: ", done)
             except:
                 print("ScanDone read failed.")
             # time.sleep(0.01) # Murtaza: Increase (before 0.001)
@@ -65,6 +70,7 @@ class Pixel:
 
         noise_width = self.read(PixReg.NW)
         baseline = self.read(PixReg.BL)
+        time.sleep(0.1)
         self.write(PixReg.Bypass_THCal, 1)
         # self.write('DAC', min(baseline+noise_width, 1023))
 
@@ -198,8 +204,8 @@ class etroc_chip:
         self.write(PeriReg.singlePort, 0)         # use both ports
         self.write(PeriReg.mergeTriggerData, 1)   # merge trigger and data
         self.write(PeriReg.disScrambler, 1)       # disable scrambler
-        self.write(PeriReg.serRateLeft, 0)        # left port 320Mbps rate
         self.write(PeriReg.serRateRight, 0)       # right port 320Mbps rate
+        self.write(PeriReg.serRateLeft, 0)        # left port 320Mbps rate
 
         # TODO: Write Chip ID to EFUSE
 
@@ -251,12 +257,12 @@ class etroc_chip:
         for adr, val, bit_mask in zip(full_addresses, register.split_value(value), register.bit_masks):
             #   You need to get the current register contents and only change the bits 
             # for that physical ETROC register chunk otherwise you rewrite the entire contents of the register!
-            register_contents = self.i2c_read(reg_address=adr)[0]
-            data = (register_contents & ~bit_mask) | val
-
-            print(f"WRITE: Reg={register.name}, written adr={adr}, written val={data} | {register_contents=}, {bit_mask=}, {val=}, total_val{value}")
+            register_contents = self.i2c_read(reg_address=adr)
+            data = (register_contents[0] & ~bit_mask) | val
+            print(f"WRITE: Reg={register.name}, written adr={adr}, written val={data} | {register_contents=}, {bit_mask=}, split_val={val}, input_val={value}")
             self.i2c_write(reg_address=adr, data=data)
-        print("===============\n")
+        if broadcast:
+            print("===============\n")
 
     def read(self, register: str|PeriReg|PixReg, row:int|None=None, col:int|None=None) -> int:
         """
@@ -276,9 +282,6 @@ class etroc_chip:
         values = []
         for adr in register.full_addresses(row=row, col=col):
             values += self.i2c_read(reg_address=adr)
-            print("READ: Reg={register.name}, read_adr={adr} read_val={self.i2c_read(reg_address=adr)} | {values=}, merged={register.merge_values(values)}")
-        print("===========\n")
-
         return register.merge_values(values)
 
     def run_threshold_scan(self):
