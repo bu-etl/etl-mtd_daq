@@ -2,7 +2,7 @@
 Authors: Naomi Gonzalez and Hayden Swanson
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 Description:
@@ -69,36 +69,32 @@ class RegChunk:
         ## Check if it is for pixel
         is_pixel = validate_is_pixel(row=row, col=col)
         # # # # PIXEL ADDRESS # # # # 
-        if is_pixel or broadcast:
-            # these two lines handle the case where you broadcast (no row and col are given)
-            row = row if is_pixel else 0
-            col = col if is_pixel else 0
-            return self.adr \
-                    | row << 5 \
-                    | col << 9 \
-                    | broadcast << 13 \
-                    | self.is_status_reg <<14 \
-                    | is_pixel << 15
+        #if is_pixel or broadcast:
+        #    # these two lines handle the case where you broadcast (no row and col are given)
+        #    row = row if is_pixel else 0
+        #    col = col if is_pixel else 0
+        #    return self.adr \
+        #            | row << 5 \
+        #            | col << 9 \
+        #            | broadcast << 13 \
+        #            | self.is_status_reg <<14 \
+        #            | is_pixel << 15
         
         # # # # PERIPHERY ADDRESS # # # #
         # Construct a full ETROC periphery register address based on table 11 in ETROC2 Manual.
-        if self.is_status_reg:
-            return self.adr | 0x100
+        #if self.is_status_reg:
+        #    return self.adr | 0x100
         
         # # # ======> TAMALERO LOGIC
-        # if self.is_status_reg and not is_pixel:
-        #     return self.adr | 0x100
-        # else:
-        #     row = row if is_pixel else 0
-        #     col = col if is_pixel else 0
-        #     return self.adr \
-        #             | row << 5 \
-        #             | col << 9 \
-        #             | broadcast << 13 \
-        #             | self.is_status_reg <<14 \
-        #             | is_pixel << 15
+        if self.is_status_reg and not is_pixel:
+            return self.adr | 0x100
+        else:
+            row = row if is_pixel else 0
+            col = col if is_pixel else 0
+            if broadcast:
+                print(f"Building full adr: local adr = {self.adr}, {row=}, {col=}, {broadcast=}, status={self.is_status_reg}, {is_pixel}")
+            return self.adr | row << 5 | col << 9 | broadcast << 13 | self.is_status_reg << 14 | validate_is_pixel(row=row, col=col) << 15
 
-        return self.adr
 
 class RegMixin:
     """
@@ -158,7 +154,7 @@ class RegMixin:
         if not isinstance(values, list):
             values = [values]
         if len(values) != len(self.RegChunks):
-            raise ValueError("length mismatch")
+            raise ValueError(f"length mismatch on register {self.name}-> Register Chunks: {self.RegChunks} | Input Values: {values}")
             
         composite = 0
         shift = 0
@@ -371,5 +367,4 @@ if __name__ == "__main__":
     print("eFuse_Prog merge_values tests passed")
 
     print("\n--- All merge_values tests passed! ---")
-
 
