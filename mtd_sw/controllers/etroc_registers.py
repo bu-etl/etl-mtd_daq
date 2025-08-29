@@ -84,6 +84,20 @@ class RegChunk:
         # Construct a full ETROC periphery register address based on table 11 in ETROC2 Manual.
         if self.is_status_reg:
             return self.adr | 0x100
+        
+        # # # ======> TAMALERO LOGIC
+        # if self.is_status_reg and not is_pixel:
+        #     return self.adr | 0x100
+        # else:
+        #     row = row if is_pixel else 0
+        #     col = col if is_pixel else 0
+        #     return self.adr \
+        #             | row << 5 \
+        #             | col << 9 \
+        #             | broadcast << 13 \
+        #             | self.is_status_reg <<14 \
+        #             | is_pixel << 15
+
         return self.adr
 
 class RegMixin:
