@@ -198,8 +198,8 @@ class etroc_chip:
         self.write(PeriReg.singlePort, 0)         # use both ports
         self.write(PeriReg.mergeTriggerData, 1)   # merge trigger and data
         self.write(PeriReg.disScrambler, 1)       # disable scrambler
-        self.write(PeriReg.serRateRight, 0)       # right port 320Mbps rate
         self.write(PeriReg.serRateLeft, 0)        # left port 320Mbps rate
+        self.write(PeriReg.serRateRight, 0)       # right port 320Mbps rate
 
         # TODO: Write Chip ID to EFUSE
 
