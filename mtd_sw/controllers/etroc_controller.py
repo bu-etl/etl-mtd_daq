@@ -139,6 +139,7 @@ class etroc_chip:
         self._vref = False
 
         self.reset(hard = True)
+        self.vref = True
         self.config()
 
 
@@ -251,9 +252,11 @@ class etroc_chip:
             #   You need to get the current register contents and only change the bits 
             # for that physical ETROC register chunk otherwise you rewrite the entire contents of the register!
             register_contents = self.i2c_read(reg_address=adr)[0]
-            data = (register_contents | ~bit_mask) | val
+            data = (register_contents & ~bit_mask) | val
+
+            print(f"WRITE: Reg={register.name}, written adr={adr}, written val={data} | {register_contents=}, {bit_mask=}, {val=}, total_val{value}")
             self.i2c_write(reg_address=adr, data=data)
-            print(f"Writing: reg={register.name} full_addr={adr}, split_val={data}, whole_val={value}")
+        print("===============\n")
 
     def read(self, register: str|PeriReg|PixReg, row:int|None=None, col:int|None=None) -> int:
         """
@@ -273,6 +276,9 @@ class etroc_chip:
         values = []
         for adr in register.full_addresses(row=row, col=col):
             values += self.i2c_read(reg_address=adr)
+            print("READ: Reg={register.name}, read_adr={adr} read_val={self.i2c_read(reg_address=adr)} | {values=}, merged={register.merge_values(values)}")
+        print("===========\n")
+
         return register.merge_values(values)
 
     def run_threshold_scan(self):
