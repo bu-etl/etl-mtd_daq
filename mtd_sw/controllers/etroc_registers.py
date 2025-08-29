@@ -190,7 +190,7 @@ class PixReg(RegMixin, Enum):
     QInjEn          = [RegChunk(adr = 1,  bit_mask = 0b0010_0000)]
     lowerCal        = [RegChunk(adr = 10, bit_mask = 0b1111_1111), RegChunk(adr = 11, bit_mask = 0b0000_0011)]
     upperCal        = [RegChunk(adr = 11, bit_mask = 0b1111_1100), RegChunk(adr = 12, bit_mask = 0b0000_1111)]
-    upperTOA        = [RegChunk(adr = 13, bit_mask = 0b1000_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
+    upperTOA        = [RegChunk(adr = 13, bit_mask = 0b1100_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
     lowerTOA        = [RegChunk(adr = 12, bit_mask = 0b1111_0000), RegChunk(adr = 13, bit_mask = 0b0011_1111)]
     lowerTOT        = [RegChunk(adr = 15, bit_mask = 0b1111_1111), RegChunk(adr = 16, bit_mask = 0b0000_0001)]
     upperTOT        = [RegChunk(adr = 16, bit_mask = 0b1111_1110), RegChunk(adr = 17, bit_mask = 0b0000_0011)]
@@ -226,8 +226,8 @@ class PeriReg(RegMixin, Enum):
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
     """
     VRefGen_PD            = [RegChunk(adr = 3,  bit_mask = 0b1000_0000)]
-    PLL_ENABLEPLL         = [RegChunk(adr = 3,  bit_mask = 0b0100_0000)]
-    PLL_vcoRailMode       = [RegChunk(adr = 3,  bit_mask = 0b0010_0000)]
+    PLL_ENABLEPLL         = [RegChunk(adr = 3,  bit_mask = 0b0010_0000)]
+    PLL_vcoRailMode       = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
     PLL_vcoDAC            = [RegChunk(adr = 3,  bit_mask = 0b0000_1111)]
     asyResetGlobalReadout = [RegChunk(adr = 14, bit_mask = 0b1000_0000)]
     asyResetFastcommand   = [RegChunk(adr = 14, bit_mask = 0b0100_0000)]
