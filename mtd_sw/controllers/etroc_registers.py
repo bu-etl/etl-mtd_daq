@@ -2,7 +2,7 @@
 Authors: Naomi Gonzalez and Hayden Swanson
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-~~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+~~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 Description:
@@ -126,11 +126,10 @@ class RegMixin:
         """
         split_values = []
         remaining = value
-        for reg_chunk in self.RegChunks:
-            n = reg_chunk.length
-            low_bits = remaining & ((1 << n) - 1)
-            remaining >>= n # consume
-            masked_value = low_bits << reg_chunk.offset
+        for reg in self.RegChunks:
+            low_bits = remaining & ((1 << reg.length) - 1)
+            remaining >>= reg.length # consume
+            masked_value = low_bits << reg.offset
             split_values.append(masked_value)
         return split_values
     
@@ -252,6 +251,7 @@ if __name__ == "__main__":
         assert got == expected, f"{reg.name} value {bin(value)} expected {list(map(bin, expected))} got {list(map(bin, got))}"
 
     # ---- PixReg.L1Adelay ---- #
+    # [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9, bit_mask = 0b1111_1111)]
     check(PixReg.L1Adelay, 0b0,            [0b0000_0000, 0b0000_0000])
     check(PixReg.L1Adelay, 0b1,            [0b1000_0000, 0b0000_0000])
     check(PixReg.L1Adelay, 0b10,           [0b0000_0000, 0b0000_0001])
@@ -261,7 +261,8 @@ if __name__ == "__main__":
     check(PixReg.L1Adelay, 0b10_1010_1010, [0b0000_0000, 0b0101_0101])
     print("L1A Delay Reg passed")
 
-    # ---- Single-bit single-chunk register: CLKEn_THCal (mask 0b0000_1000, offset 3, length 1) ---- #
+    # ---- Single-bit single-chunk register: CLKEn_THCal ---- #
+    # [RegChunk(adr = 3,  bit_mask = 0b0000_1000)]
     check(PixReg.CLKEn_THCal, 0b0,  [0b0000_0000])
     check(PixReg.CLKEn_THCal, 0b1,  [0b0000_1000])
     check(PixReg.CLKEn_THCal, 0b10, [0b0000_0000])
