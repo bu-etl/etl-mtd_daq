@@ -334,21 +334,21 @@ class PeriReg(RegMixin, Enum):
     TDCStrobeTest           = [RegChunk(adr = 31, bit_mask = 0b0010_0000)]
 
     # STATUS REGISTERS
-    PS_Late           = [RegChunk(adr = 0, bit_mask = 0b10000000, is_status_reg = True)]
-    AFCcalCap         = [RegChunk(adr = 0, bit_mask = 0b01111110, is_status_reg = True)]
-    AFCBusy           = [RegChunk(adr = 0, bit_mask = 0b00000001, is_status_reg = True)]
-    fcAlignFinalState = [RegChunk(adr = 1, bit_mask = 0b11110000, is_status_reg = True)]
-    controllerState   = [RegChunk(adr = 1, bit_mask = 0b00001111, is_status_reg = True)]
-    fcBitAlignError   = [RegChunk(adr = 2, bit_mask = 0b00000001, is_status_reg = True)]
-    fcAlignStatus     = [RegChunk(adr = 2, bit_mask = 0b11110000, is_status_reg = True)]
-    invalidFCCount    = [RegChunk(adr = 3, bit_mask = 0b11111111, is_status_reg = True), 
-                         RegChunk(adr = 4, bit_mask = 0b00001111, is_status_reg = True)]
-    pllUnlockCount    = [RegChunk(adr = 4, bit_mask = 0b11110000, is_status_reg = True), 
-                         RegChunk(adr = 5, bit_mask = 0b11111111, is_status_reg = True)]
-    EFuseQ            = [RegChunk(adr = 6, bit_mask = 0b11111111, is_status_reg = True), 
-                         RegChunk(adr = 7, bit_mask = 0b11111111, is_status_reg = True), 
-                         RegChunk(adr = 8, bit_mask = 0b11111111, is_status_reg = True), 
-                         RegChunk(adr = 9, bit_mask = 0b11111111, is_status_reg = True)]
+    PS_Late           = [RegChunk(adr = 0, bit_mask = 0b1000_0000, is_status_reg = True)]
+    AFCcalCap         = [RegChunk(adr = 0, bit_mask = 0b0111_1110, is_status_reg = True)]
+    AFCBusy           = [RegChunk(adr = 0, bit_mask = 0b0000_0001, is_status_reg = True)]
+    fcAlignFinalState = [RegChunk(adr = 1, bit_mask = 0b1111_0000, is_status_reg = True)]
+    controllerState   = [RegChunk(adr = 1, bit_mask = 0b0000_1111, is_status_reg = True)]
+    fcBitAlignError   = [RegChunk(adr = 2, bit_mask = 0b0000_0001, is_status_reg = True)]
+    fcAlignStatus     = [RegChunk(adr = 2, bit_mask = 0b1111_0000, is_status_reg = True)]
+    invalidFCCount    = [RegChunk(adr = 3, bit_mask = 0b1111_1111, is_status_reg = True), 
+                         RegChunk(adr = 4, bit_mask = 0b0000_1111, is_status_reg = True)]
+    pllUnlockCount    = [RegChunk(adr = 4, bit_mask = 0b1111_0000, is_status_reg = True), 
+                         RegChunk(adr = 5, bit_mask = 0b1111_1111, is_status_reg = True)]
+    EFuseQ            = [RegChunk(adr = 6, bit_mask = 0b1111_1111, is_status_reg = True), 
+                         RegChunk(adr = 7, bit_mask = 0b1111_1111, is_status_reg = True), 
+                         RegChunk(adr = 8, bit_mask = 0b1111_1111, is_status_reg = True), 
+                         RegChunk(adr = 9, bit_mask = 0b1111_1111, is_status_reg = True)]
 
 # --------------------------------------------------------------
 # Testing Script (Optional)
