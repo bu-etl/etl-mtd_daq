@@ -68,33 +68,22 @@ class RegChunk:
     def calc_full_address(self, row: int | None = None, col: int | None = None, broadcast: bool = False) -> int:
         ## Check if it is for pixel
         is_pixel = validate_is_pixel(row=row, col=col)
-        # # # # PIXEL ADDRESS # # # # 
-        #if is_pixel or broadcast:
-        #    # these two lines handle the case where you broadcast (no row and col are given)
-        #    row = row if is_pixel else 0
-        #    col = col if is_pixel else 0
-        #    return self.adr \
-        #            | row << 5 \
-        #            | col << 9 \
-        #            | broadcast << 13 \
-        #            | self.is_status_reg <<14 \
-        #            | is_pixel << 15
-        
-        # # # # PERIPHERY ADDRESS # # # #
-        # Construct a full ETROC periphery register address based on table 11 in ETROC2 Manual.
-        #if self.is_status_reg:
-        #    return self.adr | 0x100
-        
-        # # # ======> TAMALERO LOGIC
-        if self.is_status_reg and not is_pixel:
-            return self.adr | 0x100
-        else:
-            row = row if is_pixel else 0
-            col = col if is_pixel else 0
-            if broadcast:
-                print(f"Building full adr: local adr = {self.adr}, {row=}, {col=}, {broadcast=}, status={self.is_status_reg}, {is_pixel}")
-            return self.adr | row << 5 | col << 9 | broadcast << 13 | self.is_status_reg << 14 | validate_is_pixel(row=row, col=col) << 15
 
+        if self.is_status_reg and not is_pixel:
+            return self.adr | 0x100  # periphery status register offset
+
+        # For non-pixel registers we still encode row/col as 0 but must NOT re-infer pixel-ness
+        row_enc = row if is_pixel else 0
+        col_enc = col if is_pixel else 0
+        
+        return (
+            self.adr
+            | (row_enc << 5)
+            | (col_enc << 9)
+            | (broadcast << 13)
+            | (self.is_status_reg << 14)
+            | (is_pixel << 15)
+        )
 
 class RegMixin:
     """
@@ -163,7 +152,11 @@ class RegMixin:
             composite |= raw << shift
             shift += chunk.length
         return composite
-    
+
+    @classmethod
+    def get(cls, name: str):
+        # Safe lookup; returns None if missing
+        return cls.__members__.get(name)
 
 ######### PIXEL REG DEFINITIONS ############
 
