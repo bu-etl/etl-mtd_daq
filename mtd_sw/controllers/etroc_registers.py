@@ -146,7 +146,7 @@ class RegMixin:
             split_values.append(masked_value)
         return split_values
     
-    def merge_values(self, values: list) -> int:
+    def merge_values(self, values: int|list) -> int:
         """
         Inverse of split_value: take per-address masked values (ensure it is the same order as defined in the Enum) 
         and reconstruct the composite integer
@@ -172,46 +172,58 @@ class PixReg(RegMixin, Enum):
     Information extracted from table 13 in ETROC2 documentaition (page 57)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
     """
-    L1Adelay        = [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9, bit_mask = 0b1111_1111)]
-    CLKEn_THCal     = [RegChunk(adr = 3,  bit_mask = 0b0000_1000)]
-    Bypass_THCal    = [RegChunk(adr = 3,  bit_mask = 0b0000_0100)]
-    BufEn_THCal     = [RegChunk(adr = 3,  bit_mask = 0b0000_0010)]
-    RSTn_THCal      = [RegChunk(adr = 3,  bit_mask = 0b0000_0001)]
-    ScanStart_THCal = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
-    DAC             = [RegChunk(adr = 4,  bit_mask = 0b1111_1111), RegChunk(adr = 5, bit_mask = 0b0000_0011)]
-    TH_offset       = [RegChunk(adr = 5,  bit_mask = 0b1111_1100)]
-    enable_TDC      = [RegChunk(adr = 6,  bit_mask = 0b1000_0000)]
-    disTrigPath     = [RegChunk(adr = 7,  bit_mask = 0b0000_0100)]
-    disDataReadout  = [RegChunk(adr = 7,  bit_mask = 0b0000_0010)]
-    QInjEn          = [RegChunk(adr = 1,  bit_mask = 0b0010_0000)]
-    lowerCal        = [RegChunk(adr = 10, bit_mask = 0b1111_1111), RegChunk(adr = 11, bit_mask = 0b0000_0011)]
-    upperCal        = [RegChunk(adr = 11, bit_mask = 0b1111_1100), RegChunk(adr = 12, bit_mask = 0b0000_1111)]
-    upperTOA        = [RegChunk(adr = 13, bit_mask = 0b1100_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
-    lowerTOA        = [RegChunk(adr = 12, bit_mask = 0b1111_0000), RegChunk(adr = 13, bit_mask = 0b0011_1111)]
-    lowerTOT        = [RegChunk(adr = 15, bit_mask = 0b1111_1111), RegChunk(adr = 16, bit_mask = 0b0000_0001)]
-    upperTOT        = [RegChunk(adr = 16, bit_mask = 0b1111_1110), RegChunk(adr = 17, bit_mask = 0b0000_0011)]
-    lowerCalTrig    = [RegChunk(adr = 17, bit_mask = 0b1111_1100), RegChunk(adr = 18, bit_mask = 0b0000_1111)]
-    upperCalTrig    = [RegChunk(adr = 18, bit_mask = 0b1111_0000), RegChunk(adr = 19, bit_mask = 0b0011_1111)]
-    lowerTOATrig    = [RegChunk(adr = 19, bit_mask = 0b1100_0000), RegChunk(adr = 20, bit_mask = 0b1111_1111)]
-    upperTOATrig    = [RegChunk(adr = 21, bit_mask = 0b1111_1111), RegChunk(adr = 22, bit_mask = 0b0000_0011)]
-    lowerTOTTrig    = [RegChunk(adr = 22, bit_mask = 0b1111_1100), RegChunk(adr = 23, bit_mask = 0b0000_0111)]
-    upperTOTTrig    = [RegChunk(adr = 23, bit_mask = 0b1111_1000), RegChunk(adr = 24, bit_mask = 0b0000_1111)]
-    
+    CLSel             = [RegChunk(adr = 0,  bit_mask = 0b00000011)]
+    IBSel             = [RegChunk(adr = 0,  bit_mask = 0b00011100)]
+    RfSel             = [RegChunk(adr = 0,  bit_mask = 0b01100000)]
+    QSel              = [RegChunk(adr = 1,  bit_mask = 0b00011111)]
+    QInjEn            = [RegChunk(adr = 1,  bit_mask = 0b0010_0000)]
+    HysSel            = [RegChunk(adr = 2,  bit_mask = 0b00001111)]
+    PD_DACDiscri      = [RegChunk(adr = 2,  bit_mask = 0b00010000)]
+    CLKEn_THCal       = [RegChunk(adr = 3,  bit_mask = 0b0000_1000)]
+    Bypass_THCal      = [RegChunk(adr = 3,  bit_mask = 0b0000_0100)]
+    BufEn_THCal       = [RegChunk(adr = 3,  bit_mask = 0b0000_0010)]
+    RSTn_THCal        = [RegChunk(adr = 3,  bit_mask = 0b0000_0001)]
+    ScanStart_THCal   = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
+    DAC               = [RegChunk(adr = 4,  bit_mask = 0b1111_1111), RegChunk(adr = 5, bit_mask = 0b0000_0011)]
+    TH_offset         = [RegChunk(adr = 5,  bit_mask = 0b1111_1100)]
+    enable_TDC        = [RegChunk(adr = 6,  bit_mask = 0b1000_0000)]
+    autoReset_TDC     = [RegChunk(adr = 6,  bit_mask = 0b00100000)]
+    level_TDC         = [RegChunk(adr = 6,  bit_mask = 0b00001110)]
+    resetn_TDC        = [RegChunk(adr = 6,  bit_mask = 0b01000000)]
+    testMode_TDC      = [RegChunk(adr = 6,  bit_mask = 0b00010000)]
+    workMode          = [RegChunk(adr = 7,  bit_mask = 0b00011000)]
+    addrOffset        = [RegChunk(adr = 7,  bit_mask = 0b00000001)]
+    disTrigPath       = [RegChunk(adr = 7,  bit_mask = 0b0000_0100)]
+    disDataReadout    = [RegChunk(adr = 7,  bit_mask = 0b0000_0010)]
+    PixelSanityStat   = [RegChunk(adr = 7,  bit_mask = 0b11111111)]
+    selfTestOccupancy = [RegChunk(adr = 8,  bit_mask = 0b01111111)]
+    L1Adelay          = [RegChunk(adr = 8,  bit_mask = 0b1000_0000), RegChunk(adr = 9,  bit_mask = 0b1111_1111)]
+    lowerCal          = [RegChunk(adr = 10, bit_mask = 0b1111_1111), RegChunk(adr = 11, bit_mask = 0b0000_0011)]
+    upperCal          = [RegChunk(adr = 11, bit_mask = 0b1111_1100), RegChunk(adr = 12, bit_mask = 0b0000_1111)]
+    upperTOA          = [RegChunk(adr = 13, bit_mask = 0b1100_0000), RegChunk(adr = 14, bit_mask = 0b1111_1111)]
+    lowerTOA          = [RegChunk(adr = 12, bit_mask = 0b1111_0000), RegChunk(adr = 13, bit_mask = 0b0011_1111)]
+    lowerTOT          = [RegChunk(adr = 15, bit_mask = 0b1111_1111), RegChunk(adr = 16, bit_mask = 0b0000_0001)]
+    upperTOT          = [RegChunk(adr = 16, bit_mask = 0b1111_1110), RegChunk(adr = 17, bit_mask = 0b0000_0011)]
+    lowerCalTrig      = [RegChunk(adr = 17, bit_mask = 0b1111_1100), RegChunk(adr = 18, bit_mask = 0b0000_1111)]
+    upperCalTrig      = [RegChunk(adr = 18, bit_mask = 0b1111_0000), RegChunk(adr = 19, bit_mask = 0b0011_1111)]
+    lowerTOATrig      = [RegChunk(adr = 19, bit_mask = 0b1100_0000), RegChunk(adr = 20, bit_mask = 0b1111_1111)]
+    upperTOATrig      = [RegChunk(adr = 21, bit_mask = 0b1111_1111), RegChunk(adr = 22, bit_mask = 0b0000_0011)]
+    lowerTOTTrig      = [RegChunk(adr = 22, bit_mask = 0b1111_1100), RegChunk(adr = 23, bit_mask = 0b0000_0111)]
+    upperTOTTrig      = [RegChunk(adr = 23, bit_mask = 0b1111_1000), RegChunk(adr = 24, bit_mask = 0b0000_1111)]
+    PixelSanityConfig = [RegChunk(adr = 31, bit_mask = 0b11111111)]
+
     # STATUS REGISTERS
+    PixelID      = [RegChunk(adr = 0, bit_mask = 0b11111111)]
+    ScanDone     = [RegChunk(adr = 1, bit_mask = 0b0000_0001, is_status_reg = True)]
+    NW           = [RegChunk(adr = 1, bit_mask = 0b0001_1110, is_status_reg = True)]
+    THState      = [RegChunk(adr = 1, bit_mask = 0b1110_0000, is_status_reg = True)]
+    BL           = [RegChunk(adr = 2, bit_mask = 0b1111_1111, is_status_reg = True), 
+                    RegChunk(adr = 3, bit_mask = 0b0000_0011, is_status_reg = True)]
+    TH           = [RegChunk(adr = 3, bit_mask = 0b1100_0000, is_status_reg = True), 
+                    RegChunk(adr = 4, bit_mask = 0b1111_1111, is_status_reg = True)]
     ACC          = [RegChunk(adr = 5, bit_mask = 0b1111_1111, is_status_reg = True),
                     RegChunk(adr = 6, bit_mask = 0b1111_1111, is_status_reg = True)]
     
-    ScanDone     = [RegChunk(adr = 1, bit_mask = 0b0000_0001, is_status_reg = True)]
-    
-    BL           = [RegChunk(adr = 2, bit_mask = 0b1111_1111, is_status_reg = True), 
-                    RegChunk(adr = 3, bit_mask = 0b0000_0011, is_status_reg = True)]
-    
-    NW           = [RegChunk(adr = 1, bit_mask = 0b0001_1110, is_status_reg = True)]
-
-    TH           = [RegChunk(adr = 3, bit_mask = 0b1100_0000, is_status_reg = True), 
-                    RegChunk(adr = 4, bit_mask = 0b1111_1111, is_status_reg = True)]
-    
-    THState      = [RegChunk(adr = 1, bit_mask = 0b1110_0000, is_status_reg = True)]
 
 
 class PeriReg(RegMixin, Enum):
@@ -221,39 +233,122 @@ class PeriReg(RegMixin, Enum):
     Information extracted from table 15 in ETROC2 documentaition (page 61)
     https://indico.cern.ch/event/1288660/contributions/5415154/attachments/2651263/4590830/ETROC2_Reference_Manual%200.41.pdf
     """
-    VRefGen_PD            = [RegChunk(adr = 3,  bit_mask = 0b1000_0000)]
-    PLL_ENABLEPLL         = [RegChunk(adr = 3,  bit_mask = 0b0010_0000)]
-    PLL_vcoRailMode       = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
-    PLL_vcoDAC            = [RegChunk(adr = 3,  bit_mask = 0b0000_1111)]
-    asyResetGlobalReadout = [RegChunk(adr = 14, bit_mask = 0b1000_0000)]
-    asyResetFastcommand   = [RegChunk(adr = 14, bit_mask = 0b0100_0000)]
-    asyResetChargeInj     = [RegChunk(adr = 14, bit_mask = 0b0010_0000)]
-    readoutClockWidthPixel= [RegChunk(adr = 14, bit_mask = 0b0000_1111)]
-    RTx_AmplSel           = [RegChunk(adr = 17, bit_mask = 0b1110_0000)]
-    chargeInjectionDelay  = [RegChunk(adr = 17, bit_mask = 0b0001_1111)]
-    disLTx                = [RegChunk(adr = 18, bit_mask = 0b1000_0000)]
-    onChipL1AConf         = [RegChunk(adr = 18, bit_mask = 0b0110_0000)]
-    fcDataDelayEn         = [RegChunk(adr = 18, bit_mask = 0b0001_0000)]
-    fcClkDelayEn          = [RegChunk(adr = 18, bit_mask = 0b0000_1000)]
-    fcSelfAlignEn         = [RegChunk(adr = 18, bit_mask = 0b0000_0100)]
-    softBoot              = [RegChunk(adr = 18, bit_mask = 0b0000_0010)]
-    disPowerSequence      = [RegChunk(adr = 18, bit_mask = 0b0000_0001)]
-    disRTx                = [RegChunk(adr = 19, bit_mask = 0b1000_0000)]
-    singlePort            = [RegChunk(adr = 19, bit_mask = 0b0100_0000)]
-    serRateRight          = [RegChunk(adr = 19, bit_mask = 0b0011_0000)]
-    serRateLeft           = [RegChunk(adr = 19, bit_mask = 0b0000_1100)]
-    linkResetTestPattern  = [RegChunk(adr = 19, bit_mask = 0b0000_0010)]
-    disScrambler          = [RegChunk(adr = 19, bit_mask = 0b0000_0001)]
-    eFuse_TCKHP           = [RegChunk(adr = 20, bit_mask = 0b1111_0000)]
-    triggerGranularity    = [RegChunk(adr = 20, bit_mask = 0b0000_1110)]
-    mergeTriggerData      = [RegChunk(adr = 20, bit_mask = 0b0000_0001)]
-    eFuse_Prog            = [
-        RegChunk(adr = 22, bit_mask = 0b1111_1111),
-        RegChunk(adr = 23, bit_mask = 0b1111_1111),
-        RegChunk(adr = 24, bit_mask = 0b1111_1111),
-        RegChunk(adr = 25, bit_mask = 0b1111_1111),
-    ]
+    CLKSel                  = [RegChunk(adr = 0,  bit_mask = 0b0010_0000)]
+    PLL_FBDiv_skip          = [RegChunk(adr = 0,  bit_mask = 0b1000_0000)]
+    PLLclkgen_disSER        = [RegChunk(adr = 0,  bit_mask = 0b0000_1000)]
+    PLLclkgen_disVCO        = [RegChunk(adr = 0,  bit_mask = 0b0001_0000)]
+    PLLclkgen_disEOM        = [RegChunk(adr = 0,  bit_mask = 0b0000_0100)]
+    PLLclkgen_disCLK        = [RegChunk(adr = 0,  bit_mask = 0b0000_0001)]
+    PLLclkgen_disDES        = [RegChunk(adr = 0,  bit_mask = 0b0000_0010)]
+    PLL_FBDiv_clkTreeDisable= [RegChunk(adr = 0,  bit_mask = 0b0100_0000)]
+    PLL_BIASGEN_CONFIG      = [RegChunk(adr = 1,  bit_mask = 0b0000_1111)]
+    PLL_CONFIG_I_PLL        = [RegChunk(adr = 1,  bit_mask = 0b1111_0000)]
+    PLL_CONFIG_P_PLL        = [RegChunk(adr = 2,  bit_mask = 0b0000_1111)]
+    PLL_R_CONFIG            = [RegChunk(adr = 2,  bit_mask = 0b1111_0000)]
+    VRefGen_PD              = [RegChunk(adr = 3,  bit_mask = 0b1000_0000)]
+    PLL_ENABLEPLL           = [RegChunk(adr = 3,  bit_mask = 0b0010_0000)]
+    PLL_vcoRailMode         = [RegChunk(adr = 3,  bit_mask = 0b0001_0000)]
+    PLL_vcoDAC              = [RegChunk(adr = 3,  bit_mask = 0b0000_1111)]
+    TS_PD                   = [RegChunk(adr = 4,  bit_mask = 0b1000_0000)]
+    PS_CPCurrent            = [RegChunk(adr = 4,  bit_mask = 0b0000_1111)]
+    PS_CapRst               = [RegChunk(adr = 4,  bit_mask = 0b0001_0000)]
+    PS_Enable               = [RegChunk(adr = 4,  bit_mask = 0b0010_0000)]
+    PS_ForceDown            = [RegChunk(adr = 4,  bit_mask = 0b0100_0000)]
+    PS_PhaseAdj             = [RegChunk(adr = 5,  bit_mask = 0b1111_1111)]
+    RefStrSel               = [RegChunk(adr = 6,  bit_mask = 0b1111_1111)]
+    CLK40_EnRx              = [RegChunk(adr = 7,  bit_mask = 0b0000_0001)]
+    CLK40_EnTer             = [RegChunk(adr = 7,  bit_mask = 0b0000_0010)]
+    CLK40_Equ               = [RegChunk(adr = 7,  bit_mask = 0b0000_1100)]
+    CLK40_InvData           = [RegChunk(adr = 7,  bit_mask = 0b0001_0000)]
+    CLK40_SetCM             = [RegChunk(adr = 7,  bit_mask = 0b0010_0000)]
+    GRO_TOARST_N            = [RegChunk(adr = 7,  bit_mask = 0b1000_0000)]
+    GRO_Start               = [RegChunk(adr = 7,  bit_mask = 0b0100_0000)]
+    GRO_TOA_Latch           = [RegChunk(adr = 8,  bit_mask = 0b1000_0000)]
+    GRO_TOA_CK              = [RegChunk(adr = 8,  bit_mask = 0b0100_0000)]
+    CLK1280_EnRx            = [RegChunk(adr = 8,  bit_mask = 0b0000_0001)]
+    CLK1280_EnTer           = [RegChunk(adr = 8,  bit_mask = 0b0000_0010)]
+    CLK1280_Equ             = [RegChunk(adr = 8,  bit_mask = 0b0000_1100)]
+    CLK1280_InvData         = [RegChunk(adr = 8,  bit_mask = 0b0001_0000)]
+    CLK1280_SetCM           = [RegChunk(adr = 8,  bit_mask = 0b0010_0000)]
+    FC_EnRx                 = [RegChunk(adr = 9,  bit_mask = 0b0000_0001)]
+    FC_EnTer                = [RegChunk(adr = 9,  bit_mask = 0b0000_0010)]
+    FC_Equ                  = [RegChunk(adr = 9,  bit_mask = 0b0000_1100)]
+    FC_InvData              = [RegChunk(adr = 9,  bit_mask = 0b0001_0000)]
+    FC_SetCM                = [RegChunk(adr = 9,  bit_mask = 0b0010_0000)]
+    GRO_TOT_CK              = [RegChunk(adr = 9,  bit_mask = 0b1000_0000)]
+    GRO_TOTRST_N            = [RegChunk(adr = 9,  bit_mask = 0b0100_0000)]
+    BCIDoffset              = [RegChunk(adr = 10, bit_mask = 0b1111_1111), 
+                               RegChunk(adr = 11, bit_mask = 0b0000_1111)]
+    emptySlotBCID           = [RegChunk(adr = 11, bit_mask = 0b1111_0000), 
+                               RegChunk(adr = 12, bit_mask = 0b1111_1111)]
+    readoutClockDelayPixel  = [RegChunk(adr = 13, bit_mask = 0b0001_1111)]
+    asyAlignFastcommand     = [RegChunk(adr = 13, bit_mask = 0b0010_0000)]
+    asyLinkReset            = [RegChunk(adr = 13, bit_mask = 0b0100_0000)]
+    asyPLLReset             = [RegChunk(adr = 13, bit_mask = 0b1000_0000)]
+    asyResetGlobalReadout   = [RegChunk(adr = 14, bit_mask = 0b1000_0000)]
+    asyResetFastcommand     = [RegChunk(adr = 14, bit_mask = 0b0100_0000)]
+    asyResetChargeInj       = [RegChunk(adr = 14, bit_mask = 0b0010_0000)]
+    readoutClockWidthPixel  = [RegChunk(adr = 14, bit_mask = 0b0001_1111)]
+    readoutClockDelayGlobal = [RegChunk(adr = 15, bit_mask = 0b0001_1111)]
+    asyResetLockDetect      = [RegChunk(adr = 15, bit_mask = 0b0010_0000)]
+    asyStartCalibration     = [RegChunk(adr = 15, bit_mask = 0b0100_0000)]
+    readoutClockWidthGlobal = [RegChunk(adr = 16, bit_mask = 0b0001_1111)]
+    LTx_AmplSel             = [RegChunk(adr = 16, bit_mask = 0b1110_0000)]
+    RTx_AmplSel             = [RegChunk(adr = 17, bit_mask = 0b1110_0000)]
+    chargeInjectionDelay    = [RegChunk(adr = 17, bit_mask = 0b0001_1111)]
+    disLTx                  = [RegChunk(adr = 18, bit_mask = 0b1000_0000)]
+    onChipL1AConf           = [RegChunk(adr = 18, bit_mask = 0b0110_0000)]
+    fcDataDelayEn           = [RegChunk(adr = 18, bit_mask = 0b0001_0000)]
+    fcClkDelayEn            = [RegChunk(adr = 18, bit_mask = 0b0000_1000)]
+    fcSelfAlignEn           = [RegChunk(adr = 18, bit_mask = 0b0000_0100)]
+    softBoot                = [RegChunk(adr = 18, bit_mask = 0b0000_0010)]
+    disPowerSequence        = [RegChunk(adr = 18, bit_mask = 0b0000_0001)]
+    disRTx                  = [RegChunk(adr = 19, bit_mask = 0b1000_0000)]
+    singlePort              = [RegChunk(adr = 19, bit_mask = 0b0100_0000)]
+    serRateRight            = [RegChunk(adr = 19, bit_mask = 0b0011_0000)]
+    serRateLeft             = [RegChunk(adr = 19, bit_mask = 0b0000_1100)]
+    linkResetTestPattern    = [RegChunk(adr = 19, bit_mask = 0b0000_0010)]
+    disScrambler            = [RegChunk(adr = 19, bit_mask = 0b0000_0001)]
+    eFuse_TCKHP             = [RegChunk(adr = 20, bit_mask = 0b1111_0000)]
+    triggerGranularity      = [RegChunk(adr = 20, bit_mask = 0b0000_1110)]
+    mergeTriggerData        = [RegChunk(adr = 20, bit_mask = 0b0000_0001)]
+    eFuse_EnClk             = [RegChunk(adr = 21, bit_mask = 0b0000_0001)]
+    eFuse_Mode              = [RegChunk(adr = 21, bit_mask = 0b0000_0110)]
+    eFuse_Rstn              = [RegChunk(adr = 21, bit_mask = 0b0000_1000)]
+    eFuse_Start             = [RegChunk(adr = 21, bit_mask = 0b0001_0000)]
+    eFuse_Bypass            = [RegChunk(adr = 21, bit_mask = 0b0010_0000)]
+    eFuse_Prog              = [
+                               RegChunk(adr = 22, bit_mask = 0b1111_1111),
+                               RegChunk(adr = 23, bit_mask = 0b1111_1111),
+                               RegChunk(adr = 24, bit_mask = 0b1111_1111),
+                               RegChunk(adr = 25, bit_mask = 0b1111_1111)]
+    linkResetFixedPattern   = [
+                               RegChunk(adr = 26, bit_mask = 0b1111_1111), 
+                               RegChunk(adr = 27, bit_mask = 0b1111_1111), 
+                               RegChunk(adr = 28, bit_mask = 0b1111_1111), 
+                               RegChunk(adr = 29, bit_mask = 0b1111_1111)]
+    IfLockThrCounter        = [RegChunk(adr = 30, bit_mask = 0b0000_1111)]
+    IfReLockThrCounter      = [RegChunk(adr = 30, bit_mask = 0b1111_0000)]
+    IfUnLockThrCounter      = [RegChunk(adr = 31, bit_mask = 0b0000_1111)]
+    TDCClockTest            = [RegChunk(adr = 31, bit_mask = 0b0001_0000)]
+    TDCStrobeTest           = [RegChunk(adr = 31, bit_mask = 0b0010_0000)]
 
+    # STATUS REGISTERS
+    PS_Late           = [RegChunk(adr = 0, bit_mask = 0b10000000, is_status_reg = True)]
+    AFCcalCap         = [RegChunk(adr = 0, bit_mask = 0b01111110, is_status_reg = True)]
+    AFCBusy           = [RegChunk(adr = 0, bit_mask = 0b00000001, is_status_reg = True)]
+    fcAlignFinalState = [RegChunk(adr = 1, bit_mask = 0b11110000, is_status_reg = True)]
+    controllerState   = [RegChunk(adr = 1, bit_mask = 0b00001111, is_status_reg = True)]
+    fcBitAlignError   = [RegChunk(adr = 2, bit_mask = 0b00000001, is_status_reg = True)]
+    fcAlignStatus     = [RegChunk(adr = 2, bit_mask = 0b11110000, is_status_reg = True)]
+    invalidFCCount    = [RegChunk(adr = 3, bit_mask = 0b11111111, is_status_reg = True), 
+                         RegChunk(adr = 4, bit_mask = 0b00001111, is_status_reg = True)]
+    pllUnlockCount    = [RegChunk(adr = 4, bit_mask = 0b11110000, is_status_reg = True), 
+                         RegChunk(adr = 5, bit_mask = 0b11111111, is_status_reg = True)]
+    EFuseQ            = [RegChunk(adr = 6, bit_mask = 0b11111111, is_status_reg = True), 
+                         RegChunk(adr = 7, bit_mask = 0b11111111, is_status_reg = True), 
+                         RegChunk(adr = 8, bit_mask = 0b11111111, is_status_reg = True), 
+                         RegChunk(adr = 9, bit_mask = 0b11111111, is_status_reg = True)]
 
 # --------------------------------------------------------------
 # Testing Script (Optional)
