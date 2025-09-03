@@ -2,7 +2,7 @@
 Authors: Naomi Gonzalez and Hayden Swanson
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-~~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
+~~~~~~~DO NOT CHANGE FILE~~~~~~~~~~~~~
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
 Description:
@@ -14,19 +14,21 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
-def validate_is_pixel(row: int | None = None, col: int | None = None) -> bool:
+def validate_is_pixel(row: int | None = None, col: int | None = None, broadcast=False) -> bool:
     """
     Checks if it is a pixel.
     """
-    if row is None and col is None:
-        is_pixel = False
-    elif row is not None and col is not None:
+    if not broadcast:
+        if row is None and col is None:
+            is_pixel = False
+        elif row is not None and col is not None:
+            is_pixel = True
+        else:
+            # Exactly one supplied
+            raise ValueError("row and col must both be provided together (or both omitted)")
+    if broadcast:
         is_pixel = True
-    else:
-        # Exactly one supplied
-        raise ValueError("row and col must both be provided together (or both omitted)")
-    
-    if is_pixel:
+    elif is_pixel:
         if not row in range(16) or not col in range(16):
             raise ValueError(f"Row and Col should be between 0..15, you gave: {row=}, {col=}")
     return is_pixel
@@ -67,14 +69,27 @@ class RegChunk:
     
     def calc_full_address(self, row: int | None = None, col: int | None = None, broadcast: bool = False) -> int:
         ## Check if it is for pixel
-        is_pixel = validate_is_pixel(row=row, col=col)
+        is_pixel = validate_is_pixel(row=row, col=col, broadcast=broadcast)
 
         if self.is_status_reg and not is_pixel:
             return self.adr | 0x100  # periphery status register offset
 
         # For non-pixel registers we still encode row/col as 0 but must NOT re-infer pixel-ness
-        row_enc = row if is_pixel else 0
-        col_enc = col if is_pixel else 0
+
+        if not is_pixel:
+            # peri reg
+            row, col = 0, 0
+        elif not broadcast and is_pixel:
+            # single pix address
+            row, col = row, col
+        elif broadcast and is_pixel:
+            # broadcast
+            row, col = 0, 0
+        else:
+            raise ValueError("Invalid combination of broadcast, row, and col")
+
+        row_enc = row if not broadcast else 0
+        col_enc = col if not broadcast else 0
         
         return (
             self.adr
@@ -108,6 +123,8 @@ class RegMixin:
         return [r.adr for r in self.RegChunks]
     
     def full_addresses(self, row:int | None = None, col:int | None = None, broadcast:bool = False) -> list[int]:
+        
+        is_pix_reg = True
         return [
             r.calc_full_address(row=row, col=col, broadcast=broadcast) for r in self.RegChunks]
     
