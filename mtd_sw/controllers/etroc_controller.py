@@ -44,8 +44,8 @@ class Pixel:
         self.write(PixReg.BufEn_THCal, 1)
         self.write(PixReg.RSTn_THCal, 0) # Check with Murtaza: Needed?
         self.write(PixReg.RSTn_THCal, 1) # Check with Murtaza: Needed?
+        print("ScanDone before rising edge", self.read(PixReg.ScanDone))
         self.write(PixReg.ScanStart_THCal, 1)
-        print("Scan Done check 2", self.read(PixReg.ScanDone))
         self.write(PixReg.ScanStart_THCal, 0)
         
         done = False
@@ -55,14 +55,13 @@ class Pixel:
         while not done:
             done = True
             try:
-                print("trying scan", c)
                 c+=1
                 done = self.read(PixReg.ScanDone)
-                print("scandone: ", done)
+                print("ScanDone Status: ", done)
             except:
                 print("ScanDone read failed.")
             # time.sleep(0.01) # Murtaza: Increase (before 0.001)
-            time.sleep(0.01) # Murtaza: Increase (before 0.001)
+            time.sleep(0.1) # Murtaza: Increase (before 0.001)
             if time.time() - start_time > timeout:
                 print(f"Auto threshold scan timed out for pixel {self.row=}, {self.col=}")
                 timed_out = True
@@ -70,7 +69,7 @@ class Pixel:
 
         noise_width = self.read(PixReg.NW)
         baseline = self.read(PixReg.BL)
-        time.sleep(0.1)
+        #time.sleep(0.1)
         self.write(PixReg.Bypass_THCal, 1)
         # self.write('DAC', min(baseline+noise_width, 1023))
 
@@ -248,7 +247,7 @@ class etroc_chip:
         if isinstance(register, int):
             raise TypeError("You attempted to pass an integer for the register in write. If you want to write to a specific address please use the i2c_write and i2c_read methods of this class.")
 
-        is_pixel = validate_is_pixel(row, col)
+        is_pixel = validate_is_pixel(row=row, col=col, broadcast=broadcast)
         
         if isinstance(register, str):
             register = PixReg[register] if is_pixel else PeriReg[register]
@@ -259,7 +258,7 @@ class etroc_chip:
             # for that physical ETROC register chunk otherwise you rewrite the entire contents of the register!
             register_contents = self.i2c_read(reg_address=adr)
             data = (register_contents[0] & ~bit_mask) | val
-            print(f"WRITE: Reg={register.name}, written adr={adr}, written val={data} | {register_contents=}, {bit_mask=}, split_val={val}, input_val={value}")
+            print(f"WRITE: Reg={register.name}, written adr={adr}, written val={data} | {register_contents=}, input_val={value}")
             self.i2c_write(reg_address=adr, data=data)
         if broadcast:
             print("===============\n")
@@ -282,14 +281,19 @@ class etroc_chip:
         values = []
         for adr in register.full_addresses(row=row, col=col):
             values += self.i2c_read(reg_address=adr)
+            print(f"READ {register.name}: {adr=}, value={values[-1]}, all_vals={values}")
         return register.merge_values(values)
 
     def run_threshold_scan(self):
         """
         Preform threshold scan on full ETROC chip (all pixels)
         """
+        self.pixels.write(PixReg.IBSel, 0)
+        self.pixels.write(PixReg.workMode, 0)
+
         self.pixels.write(PixReg.Bypass_THCal, 1)
         self.pixels.write(PixReg.disDataReadout, 1)
+        self.pixels.write(PixReg.disTrigPath, 1)
         self.pixels.write(PixReg.enable_TDC, 0)
         self.pixels.write(PixReg.DAC, 1023)
         self.pixels.write(PixReg.TH_offset, 63)
@@ -303,10 +307,17 @@ class etroc_chip:
                 pix = self.pixels[row][col]
                 bl, nw = pix.auto_threshold_scan()
                 baselines[row][col], noisewidths[row][col] = bl, nw
-                print(bl, nw)
+                print(f"{bl=}, {nw=}")
+                print("--------------")
 
         self.pixels.write(PixReg.disDataReadout, 0)
         self.pixels.write(PixReg.disTrigPath, 0)
         self.pixels.write(PixReg.enable_TDC, 1)
+        
+        print("FINAL BASELINES")
+        print(baselines)
+
+        print("FINAL NOISEWIDTH")
+        print(noisewidths)
 
         return baselines, noisewidths
