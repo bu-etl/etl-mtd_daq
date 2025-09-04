@@ -35,7 +35,7 @@ class Pixel:
 
         register: ETROC pixel register name(str) or pixel register number(int)
         """
-        return self.etroc.read(register)
+        return self.etroc.read(register, row=self.row, col=self.col)
     
     def auto_threshold_scan(self, timeout = 5):
         print("Checking Scan done", self.read(PixReg.ScanDone))
@@ -272,7 +272,6 @@ class etroc_chip:
 
         if isinstance(register, int):
             raise TypeError("You attempted to pass an integer for the register in write. If you want to write to a specific address please use the i2c_write and i2c_read methods of this class.")
-
         is_pixel = validate_is_pixel(row, col)
         
         if isinstance(register, str):
